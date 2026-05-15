@@ -195,12 +195,20 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        // Proxy semua /api/* ke backend
+        // Proxy direct backend routes (tanpa /api prefix dari browser)
+        source: '/:path(auth|products|projects|orders|admin|wallpapers|notifications)/:rest*',
+        destination: 'http://localhost:5000/api/:path/:rest*',
+      },
+      {
+        source: '/:path(auth|products|projects|orders|admin|wallpapers|notifications)',
+        destination: 'http://localhost:5000/api/:path',
+      },
+      {
+        // Proxy /api/* juga untuk backwards compatibility
         source: '/api/:path*',
         destination: 'http://localhost:5000/api/:path*',
       },
       {
-        // Proxy semua /uploads/* ke backend — hindari blokir "private IP"
         source: '/uploads/:path*',
         destination: 'http://localhost:5000/uploads/:path*',
       },
