@@ -1,0 +1,23 @@
+﻿node.exe : npm warn Unknown cli config "--reporter". This will stop working in the next major version of npm.
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+> frontend@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.5 C:/xampp/htdocs/design_interior/frontend
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  18 passed (18)
+      Tests  480 passed (480)
+   Start at  20:07:43
+   Duration  8.70s (transform 2.73s, setup 9.52s, import 9.41s, tests 11.43s, environment 45.44s)
+
