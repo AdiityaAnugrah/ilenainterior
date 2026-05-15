@@ -125,6 +125,7 @@ const nextConfig: NextConfig = {
 
     // Bundle Analyzer (optional, enable with ANALYZE=true)
     if (process.env.ANALYZE === 'true') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
       config.plugins.push(
         new BundleAnalyzerPlugin({
@@ -188,6 +189,11 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
+      {
+        // Proxy semua /api/* ke backend
+        source: '/api/:path*',
+        destination: 'http://localhost:5000/api/:path*',
+      },
       {
         // Proxy semua /uploads/* ke backend — hindari blokir "private IP"
         source: '/uploads/:path*',

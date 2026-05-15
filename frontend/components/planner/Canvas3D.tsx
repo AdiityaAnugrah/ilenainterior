@@ -331,6 +331,14 @@ export default function Canvas3D() {
   const [isRendering, setIsRendering] = useState(true); // Loading state for 3D render
   const [loadingProgress, setLoadingProgress] = useState(0); // Loading progress 0-100
   const [loadingMessage, setLoadingMessage] = useState('Memuat tampilan 3D...'); // Loading message
+  const [refsReady, setRefsReady] = useState(false); // Track if all refs are initialized
+  
+  // Store ref values in state to avoid accessing .current during render
+  const [performanceMonitor, setPerformanceMonitor] = useState<PerformanceMonitor | null>(null);
+  const [frustumCuller, setFrustumCuller] = useState<FrustumCuller | null>(null);
+  const [qualityManager, setQualityManager] = useState<QualityManager | null>(null);
+  const [rendererOptimizer, setRendererOptimizer] = useState<RendererOptimizer | null>(null);
+  
   const { selectedItemId, timeOfDay, setTimeOfDay } = useEditorStore();
   const isNight = timeOfDay === 'night';
 
@@ -354,6 +362,7 @@ export default function Canvas3D() {
     });
 
     performanceMonitorRef.current = monitor;
+    setPerformanceMonitor(monitor);
     console.log('[Canvas3D] PerformanceMonitor created');
     setLoadingProgress(20);
     setLoadingMessage('Memuat kontrol 3D...');
@@ -381,6 +390,7 @@ export default function Canvas3D() {
     });
 
     frustumCullerRef.current = culler;
+    setFrustumCuller(culler);
     console.log('[Canvas3D] FrustumCuller created');
     setLoadingProgress(50);
     setLoadingMessage('Menyiapkan kualitas grafis...');
@@ -395,6 +405,7 @@ export default function Canvas3D() {
     });
 
     qualityManagerRef.current = qualityManager;
+    setQualityManager(qualityManager);
     console.log('[Canvas3D] QualityManager created');
     setLoadingProgress(60);
     setLoadingMessage('Mengoptimalkan renderer...');
@@ -407,6 +418,7 @@ export default function Canvas3D() {
     });
 
     rendererOptimizerRef.current = rendererOptimizer;
+    setRendererOptimizer(rendererOptimizer);
     console.log('[Canvas3D] RendererOptimizer created');
     setLoadingProgress(70);
     setLoadingMessage('Mendeteksi perangkat...');
@@ -416,6 +428,9 @@ export default function Canvas3D() {
     console.log('[Canvas3D] QualityManager initialized');
     setLoadingProgress(80);
     setLoadingMessage('Menyiapkan scene 3D...');
+
+    // Mark refs as ready
+    setRefsReady(true);
 
     // Check for low-end device and enable graceful degradation
     const deviceScore = deviceDetector.getDeviceScore();
@@ -671,16 +686,16 @@ export default function Canvas3D() {
             <meshBasicMaterial color="orange" />
           </mesh>
         }>
-          {performanceMonitorRef.current && frustumCullerRef.current && qualityManagerRef.current && rendererOptimizerRef.current ? (
+          {refsReady && performanceMonitor && frustumCuller && qualityManager && rendererOptimizer ? (
             <Scene
               orbitRef={orbitRef}
               transformMode={transformMode}
               onDragStart={disableOrbit}
               onDragEnd={enableOrbit}
-              performanceMonitor={performanceMonitorRef.current}
-              frustumCuller={frustumCullerRef.current}
-              qualityManager={qualityManagerRef.current}
-              rendererOptimizer={rendererOptimizerRef.current}
+              performanceMonitor={performanceMonitor}
+              frustumCuller={frustumCuller}
+              qualityManager={qualityManager}
+              rendererOptimizer={rendererOptimizer}
             />
           ) : (
             <mesh>
@@ -727,10 +742,10 @@ export default function Canvas3D() {
       <ControlsHint mode="3d" />
 
       {/* Dev Console - Unified Performance & Quality (sudah include Quality Settings di dalamnya) */}
-      {performanceMonitorRef.current && qualityManagerRef.current && (
+      {refsReady && performanceMonitor && qualityManager && (
         <DevConsole
-          performanceMonitor={performanceMonitorRef.current}
-          qualityManager={qualityManagerRef.current}
+          performanceMonitor={performanceMonitor}
+          qualityManager={qualityManager}
           onQualityChange={handleQualityChange}
         />
       )}
@@ -753,9 +768,9 @@ export default function Canvas3D() {
       </button>
 
       {/* Low-End Device Notification */}
-      {showLowEndNotification && qualityManagerRef.current && (
+      {refsReady && showLowEndNotification && qualityManager && (
         <LowEndDeviceNotification
-          disabledFeatures={qualityManagerRef.current.getDisabledFeatures()}
+          disabledFeatures={qualityManager.getDisabledFeatures()}
           onDismiss={handleLowEndDismiss}
           onTryAnyway={handleLowEndTryAnyway}
         />
