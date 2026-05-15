@@ -1764,7 +1764,7 @@ const RoomMesh = memo(function RoomMesh() {
    * Future: Consider using material groups or instanced rendering for optimization
    * while maintaining correct material assignment per geometry.
    */
-  const mergedStaticLOD = useMemo(() => {
+  const mergedStaticLOD = useMemo((): { lod: THREE.LOD; material: THREE.Material } | null => {
     // Geometry merging disabled - return null to use individual meshes
     return null;
   }, []);
