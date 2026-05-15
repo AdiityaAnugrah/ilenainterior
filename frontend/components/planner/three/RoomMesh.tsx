@@ -1804,7 +1804,7 @@ const RoomMesh = memo(function RoomMesh() {
     const memoryManager = getMemoryManager();
     
     // If we have merged geometry, register it instead of individual geometries
-    if (mergedStaticLOD) {
+    if (mergedStaticLOD && 'lod' in mergedStaticLOD) {
       mergedStaticLOD.lod.levels.forEach((level, index) => {
         const mesh = level.object as THREE.Mesh;
         if (mesh.geometry) {
