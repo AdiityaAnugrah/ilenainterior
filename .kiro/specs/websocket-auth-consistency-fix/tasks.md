@@ -1,0 +1,95 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Native fetch() bypasses centralized authentication
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: Test the four notification API functions (refreshNotifications, fetchUnreadCount, markAsRead, markAllAsRead) to verify they currently use native fetch() instead of the centralized api instance
+  - Test that native fetch() calls fail to include guest token headers for unauthenticated users
+  - Test that native fetch() calls fail to trigger centralized 401 error handling (redirect to /login)
+  - Test that native fetch() calls fail to store guest tokens from API responses
+  - Test that manual Authorization header construction duplicates interceptor logic
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found:
+    - Guest token header missing from requests when no JWT token present
+    - 401 errors logged to console without redirect
+    - Guest tokens from responses not stored
+    - Manual token injection duplicates interceptor logic
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - WebSocket functionality remains unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for WebSocket functionality:
+    - Socket.io connection establishment with JWT token in auth handshake
+    - Real-time notification delivery via `notification:new` events
+    - Toast notification display with correct icons, titles, and action buttons
+    - Notification state management (adding new notifications, updating read status)
+    - Navigation to notification routes when clicking toast notifications
+    - WebSocket connection cleanup on component unmount
+    - Conditional logic (skip connection if not admin or no token)
+  - Write property-based tests capturing observed behavior patterns:
+    - Test Socket.io connection is established correctly across different user states
+    - Test real-time notifications trigger toast displays across various notification types
+    - Test toast notifications render correctly with different notification data
+    - Test state updates work correctly when marking notifications as read
+    - Test navigation works correctly for different notification types
+    - Test cleanup disconnects Socket.io connection properly
+    - Test conditional logic skips connection for non-admin users
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+- [x] 3. Fix for WebSocket authentication inconsistency
+
+  - [x] 3.1 Implement the fix in WebSocketContext.tsx
+    - Add import statement: `import api from '@/lib/api';` at the top of the file
+    - Replace `refreshNotifications()` fetch call with `api.get('/api/notifications?page=1&limit=50')`
+    - Replace `fetchUnreadCount()` fetch call with `api.get('/api/notifications/unread-count')`
+    - Replace `markAsRead()` fetch call with `api.put(\`/api/notifications/\${notificationId}/read\`)`
+    - Replace `markAllAsRead()` fetch call with `api.put('/api/notifications/read-all')`
+    - Update response handling: change `response.ok` checks to axios error handling (axios throws on non-2xx)
+    - Update data access: change `response.json()` to `response.data` (axios auto-parses JSON)
+    - Remove `token` from dependency arrays of all four functions (api instance handles token injection)
+    - _Bug_Condition: isBugCondition(input) where input.functionName IN ['refreshNotifications', 'fetchUnreadCount', 'markAsRead', 'markAllAsRead'] AND input.implementation.includes('fetch(') AND input.implementation.includes('Authorization: \`Bearer \${token}\`')_
+    - _Expected_Behavior: All four notification API functions use centralized api instance (api.get() or api.put()) which automatically injects JWT tokens for authenticated users, injects guest tokens for unauthenticated users, stores guest tokens from responses, and handles 401 errors with redirect logic_
+    - _Preservation: Socket.io connection, real-time event handling, toast display, state management, routing, cleanup, and conditional logic remain completely unchanged_
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
+
+  - [x] 3.2 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Centralized authentication is used
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify that:
+      - Guest token headers are now included for unauthenticated users
+      - 401 errors now trigger centralized redirect to /login
+      - Guest tokens from responses are now stored automatically
+      - Manual token injection is replaced with interceptor-based injection
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
+
+  - [x] 3.3 Verify preservation tests still pass
+    - **Property 2: Preservation** - WebSocket functionality unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all WebSocket functionality still works:
+      - Socket.io connection establishment
+      - Real-time notification delivery
+      - Toast notification display
+      - State management
+      - Navigation
+      - Cleanup
+      - Conditional logic
+    - Confirm all tests still pass after fix (no regressions)
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.

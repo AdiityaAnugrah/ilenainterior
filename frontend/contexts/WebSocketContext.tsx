@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { io } from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
+import api from '@/lib/api';
 
 interface Notification {
   id: number;
@@ -123,95 +124,51 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const refreshNotifications = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications?page=1&limit=50`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.data || []);
-        setUnreadCount(data.unreadCount || 0);
-      }
+      const response = await api.get('/api/notifications?page=1&limit=50');
+      setNotifications(response.data.data || []);
+      setUnreadCount(response.data.unreadCount || 0);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     }
-  }, [token]);
+  }, []);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications/unread-count`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.count || 0);
-      }
+      const response = await api.get('/api/notifications/unread-count');
+      setUnreadCount(response.data.count || 0);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }
-  }, [token]);
+  }, []);
 
   const markAsRead = useCallback(
     async (notificationId: number) => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications/${notificationId}/read`,
-          {
-            method: 'PUT',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const response = await api.put(`/api/notifications/${notificationId}/read`);
+        
+        // Update local state
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
         );
-
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Update local state
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
-          );
-          setUnreadCount(data.unreadCount || 0);
-        }
+        setUnreadCount(response.data.unreadCount || 0);
       } catch (error) {
         console.error('Failed to mark notification as read:', error);
       }
     },
-    [token]
+    []
   );
 
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications/read-all`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Update local state
-        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-        setUnreadCount(0);
-      }
+      await api.put('/api/notifications/read-all');
+      
+      // Update local state
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
-  }, [token]);
+  }, []);
 
   const handleNotificationClick = useCallback(async (notification: Notification) => {
     // Mark as read
