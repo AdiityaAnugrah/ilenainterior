@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import WizardBar from '@/components/planner/WizardBar';
@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 const Step3Material = dynamic(() => import('@/components/planner/Step3Material'), { ssr: false });
 const Step4Result   = dynamic(() => import('@/components/planner/Step4Result'),   { ssr: false });
 
-export default function PlannerPage() {
+function PlannerContent() {
   const { currentStep, loadProject } = useEditorStore();
   const searchParams = useSearchParams();
 
@@ -86,5 +86,20 @@ export default function PlannerPage() {
         {currentStep === 4 && <Step4Result />}
       </div>
     </div>
+  );
+}
+
+export default function PlannerPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex items-center justify-center bg-stone-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-stone-600">Loading planner...</p>
+        </div>
+      </div>
+    }>
+      <PlannerContent />
+    </Suspense>
   );
 }
