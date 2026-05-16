@@ -1,14 +1,21 @@
 import axios from 'axios';
 import { getGuestToken, setGuestToken } from './guestToken';
 
+// No baseURL — axios 1.7+ does not combine relative baseURL with
+// absolute-path URLs (starting with '/').  We prepend /api explicitly
+// inside the request interceptor instead.
 const api = axios.create({
-  baseURL: '/api',
   withCredentials: true,
 });
 
-// Request interceptor - add auth token or guest token
+// Request interceptor - prepend /api prefix + add auth/guest token
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
+    // Prepend /api to every relative URL that doesn't already have it
+    if (config.url && !config.url.startsWith('http') && !config.url.startsWith('/api')) {
+      config.url = '/api' + config.url;
+    }
+
     const token = localStorage.getItem('ilena_token');
     if (token) {
       // Authenticated user - use JWT token
