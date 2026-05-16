@@ -154,6 +154,31 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Service worker must never be cached + wipe stale chunks
+        // when /sw.js is fetched. We only clear "cache" (HTTP cache +
+        // Cache API) here, NOT "storage" - clearing storage would
+        // wipe localStorage and force every user to re-login on each
+        // deploy. The kill-switch SW handles its own unregistration
+        // in its activate handler.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+          { key: 'Clear-Site-Data', value: '"cache"' },
+        ],
+      },
+      {
+        // Force HTML pages to revalidate so users always get the
+        // latest chunk references after a deploy. Static chunks below
+        // keep their immutable cache (content-hashed filenames make
+        // this safe).
+        source: '/((?!_next/static|uploads).*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        ],
+      },
+      {
         source: '/uploads/:path*',
         headers: [
           {
@@ -192,6 +217,18 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    return [
+      {
+        // Legacy admin Preview button used the plural form. Permanent
+        // redirect so old links / bookmarks land on the real page.
+        source: '/products/:id',
+        destination: '/product/:id',
+        permanent: true,
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {
@@ -200,10 +237,24 @@ const nextConfig: NextConfig = {
         destination: 'http://localhost:5000/api/:path*',
       },
       {
-        // Proxy semua /uploads/* ke backend — hindari blokir "private IP"
+        // Proxy semua /uploads/* ke backend
         source: '/uploads/:path*',
         destination: 'http://localhost:5000/uploads/:path*',
       },
+      // ----------------------------------------------------------------
+      // Legacy URL catch-alls.
+      //
+      // Some users still have JS chunks cached from before we hard-coded
+      // the /api prefix at every call site. Those chunks call paths like
+      // /auth/login, /notifications, /wallpapers without the /api
+      // prefix. Forward them to the backend so login keeps working even
+      // for stale clients. Safe because none of these paths are also
+      // Next.js pages.
+      // Remove these once cache rotation is complete (a week or two).
+      // ----------------------------------------------------------------
+      { source: '/auth/:path*',          destination: 'http://localhost:5000/api/auth/:path*' },
+      { source: '/notifications/:path*', destination: 'http://localhost:5000/api/notifications/:path*' },
+      { source: '/wallpapers/:path*',    destination: 'http://localhost:5000/api/wallpapers/:path*' },
     ];
   },
 

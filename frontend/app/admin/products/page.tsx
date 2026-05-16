@@ -244,7 +244,7 @@ export default function AdminProductsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/admin/products', { params: { search, limit: 50 } });
+      const { data } = await api.get('/api/admin/products', { params: { search, limit: 50 } });
       setProducts(data.data);
       setTotal(data.total);
     } finally { setLoading(false); }
@@ -258,7 +258,7 @@ export default function AdminProductsPage() {
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Hapus produk "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
     try {
-      await api.delete(`/admin/products/${id}`);
+      await api.delete(`/api/admin/products/${id}`);
       toast.success('Produk dihapus');
       load();
     } catch { toast.error('Gagal menghapus produk'); }
@@ -292,7 +292,7 @@ export default function AdminProductsPage() {
 
     try {
       await queueRequest(() =>
-        api.put(`/admin/products/${product.id}`, {
+        api.put(`/api/admin/products/${product.id}`, {
           name: product.name,
           category: product.category,
           description: product.description || '',
@@ -333,7 +333,7 @@ export default function AdminProductsPage() {
     try {
       // Fetch complete product details
       const { data: fullProduct } = await queueRequest(() =>
-        api.get(`/admin/products/${product.id}`)
+        api.get(`/api/admin/products/${product.id}`)
       );
 
       // Transform data for duplication
@@ -352,7 +352,7 @@ export default function AdminProductsPage() {
       };
 
       // Create duplicate
-      await queueRequest(() => api.post('/admin/products', duplicateData));
+      await queueRequest(() => api.post('/api/admin/products', duplicateData));
 
       toast.success('Product duplicated successfully');
       load(); // Refresh to show new product
@@ -365,8 +365,13 @@ export default function AdminProductsPage() {
   };
 
   const handlePreview = (product: Product) => {
-    const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL || 'http://localhost:3000';
-    const previewUrl = `${clientUrl}/products/${product.id}`;
+    // Use window.location.origin so we always open on the same host
+    // the admin is viewing - prevents an accidental localhost fallback
+    // when NEXT_PUBLIC_CLIENT_URL is not baked into the build.
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : '';
+    const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL || origin;
+    const previewUrl = `${clientUrl}/product/${product.id}`;
     window.open(previewUrl, '_blank');
   };
 
@@ -385,7 +390,7 @@ export default function AdminProductsPage() {
 
     try {
       await queueRequest(() =>
-        api.put(`/admin/products/${productId}`, {
+        api.put(`/api/admin/products/${productId}`, {
           name: product.name,
           category: product.category,
           description: product.description || '',
