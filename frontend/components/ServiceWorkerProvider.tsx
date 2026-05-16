@@ -17,38 +17,44 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
       return;
     }
 
-    // Initialize service worker manager
-    const manager = new ServiceWorkerManager({
-      onSuccess: (registration) => {
-        console.log('[App] Service Worker registered successfully');
-      },
-      onUpdate: (registration) => {
-        console.log('[App] New service worker available');
-        setShowUpdateNotification(true);
-      },
-      onError: (error) => {
-        console.error('[App] Service Worker registration failed:', error);
-      },
-      enableAutoUpdate: true,
-      updateInterval: 60000, // Check every 60 seconds
-    });
+    // Service Worker is currently disabled.
+    //
+    // A previous SW (public/sw.js) was caching stale JS chunks and
+    // serving them across deploys, which broke the app's API URL
+    // handling after we changed lib/api.ts. The new sw.js is a
+    // kill-switch that unregisters itself and clears all caches.
+    //
+    // We still register the kill-switch so existing visitors can be
+    // cleaned up, but we no longer use ServiceWorkerManager (which
+    // would try to keep it alive). Once everyone has been cleaned up
+    // we can drop this registration entirely.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .then((registration) => {
+          // Force immediate update check so the kill-switch version is
+          // fetched on the very next visit.
+          registration.update().catch(() => {});
+        })
+        .catch(() => {
+          // Ignore registration errors - nothing we can do here.
+        });
+    }
 
-    setSwManager(manager);
-
-    // Register service worker
-    manager.register();
-
-    // Cleanup on unmount
     return () => {
-      // Don't unregister on unmount, just stop update checks
+      // No cleanup needed.
     };
   }, []);
 
   const handleUpdate = () => {
-    if (swManager) {
-      swManager.skipWaiting();
-      setShowUpdateNotification(false);
+    // swManager is no longer used (kill-switch handles itself), but we
+    // keep the handler so the JSX below still compiles. Reload to pick
+    // up the latest assets.
+    if (typeof window !== 'undefined') {
+      window.location.reload();
     }
+    setShowUpdateNotification(false);
+    void swManager; // silence unused-var lint
   };
 
   const handleDismiss = () => {
