@@ -74,7 +74,7 @@ export default function NewOrderPage() {
 
   const loadUsers = async () => {
     try {
-      const { data } = await api.get('/admin/products'); // Reuse endpoint or create /admin/users
+      const { data } = await api.get('/api/admin/products'); // Reuse endpoint or create /admin/users
       // For now, we'll need to get users from orders or create a users endpoint
       // Simplified: just allow manual entry
     } catch (error) {
@@ -84,7 +84,7 @@ export default function NewOrderPage() {
 
   const loadProducts = async () => {
     try {
-      const { data } = await api.get('/admin/products', {
+      const { data } = await api.get('/api/admin/products', {
         params: { search: searchProduct, limit: 10 },
       });
       setProducts(data.data);
@@ -159,7 +159,7 @@ export default function NewOrderPage() {
 
     setLoading(true);
     try {
-      const { data } = await api.post('/admin/orders', {
+      const { data } = await api.post('/api/admin/orders', {
         user_id: parseInt(userId),
         items: items.map((item) => ({
           product_id: item.product_id,

@@ -52,7 +52,7 @@ export default function AdminUsersPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/admin/users', {
+      const { data } = await api.get('/api/admin/users', {
         params: { 
           search, 
           role: roleFilter, 
@@ -83,7 +83,7 @@ export default function AdminUsersPage() {
 
   const handleExport = async () => {
     try {
-      const response = await api.get('/admin/users/export', {
+      const response = await api.get('/api/admin/users/export', {
         params: { search, role: roleFilter, status: statusFilter },
         responseType: 'blob',
       });

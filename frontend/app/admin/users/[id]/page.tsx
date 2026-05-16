@@ -66,7 +66,7 @@ export default function UserDetailPage() {
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
-        const { data } = await api.get('/auth/me');
+        const { data } = await api.get('/api/auth/me');
         setCurrentUserId(data.id);
       } catch (error) {
         console.error('Failed to fetch current user:', error);
@@ -78,7 +78,7 @@ export default function UserDetailPage() {
   const loadUser = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/users/${userId}`);
+      const { data } = await api.get(`/api/admin/users/${userId}`);
       setUser(data);
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -102,7 +102,7 @@ export default function UserDetailPage() {
   const handleBlock = async () => {
     setActionLoading(true);
     try {
-      await api.put(`/admin/users/${userId}/status`, { status: 'blocked' });
+      await api.put(`/api/admin/users/${userId}/status`, { status: 'blocked' });
       toast.success('User berhasil diblokir');
       setBlockDialog(false);
       await loadUser();
@@ -117,7 +117,7 @@ export default function UserDetailPage() {
   const handleUnblock = async () => {
     setActionLoading(true);
     try {
-      await api.put(`/admin/users/${userId}/status`, { status: 'active' });
+      await api.put(`/api/admin/users/${userId}/status`, { status: 'active' });
       toast.success('User berhasil diaktifkan kembali');
       setUnblockDialog(false);
       await loadUser();
@@ -132,7 +132,7 @@ export default function UserDetailPage() {
   const handleResetPassword = async () => {
     setActionLoading(true);
     try {
-      const { data } = await api.post(`/admin/users/${userId}/reset-password`);
+      const { data } = await api.post(`/api/admin/users/${userId}/reset-password`);
       setTemporaryPassword(data.temporary_password);
       toast.success('Password berhasil direset');
       setResetPasswordDialog(false);
@@ -149,7 +149,7 @@ export default function UserDetailPage() {
   const handleChangeRole = async (newRole: 'user' | 'admin') => {
     setActionLoading(true);
     try {
-      await api.put(`/admin/users/${userId}/role`, { role: newRole });
+      await api.put(`/api/admin/users/${userId}/role`, { role: newRole });
       toast.success('Role user berhasil diubah');
       setRoleChangeDialog(false);
       await loadUser();
@@ -164,7 +164,7 @@ export default function UserDetailPage() {
   const handleDelete = async () => {
     setActionLoading(true);
     try {
-      await api.delete(`/admin/users/${userId}`);
+      await api.delete(`/api/admin/users/${userId}`);
       toast.success('User berhasil dihapus');
       router.push('/admin/users');
     } catch (error: any) {

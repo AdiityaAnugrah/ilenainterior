@@ -10,7 +10,7 @@ export default function EditWallpaperPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get(`/admin/wallpapers/${params.id}`)
+    api.get(`/api/admin/wallpapers/${params.id}`)
       .then(r => setWallpaper(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));

@@ -69,7 +69,7 @@ export default function AdminOrdersPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/admin/orders', {
+      const { data } = await api.get('/api/admin/orders', {
         params: { search, status: statusFilter, dateFrom, dateTo, page, limit },
       });
       setOrders(data.data);
@@ -91,7 +91,7 @@ export default function AdminOrdersPage() {
 
   const handleExport = async () => {
     try {
-      const response = await api.get('/admin/orders/export', {
+      const response = await api.get('/api/admin/orders/export', {
         params: { search, status: statusFilter, dateFrom, dateTo },
         responseType: 'blob',
       });

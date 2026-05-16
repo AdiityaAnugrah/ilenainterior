@@ -10,7 +10,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/admin/settings')
+    api.get('/api/admin/settings')
       .then(r => {
         setWaNumber(r.data.whatsapp_number || '');
       })
@@ -22,7 +22,7 @@ export default function AdminSettingsPage() {
     if (!waNumber.trim()) { toast.error('Nomor WA wajib diisi'); return; }
     setSaving(true);
     try {
-      await api.put('/admin/settings', { key: 'whatsapp_number', value: waNumber.trim() });
+      await api.put('/api/admin/settings', { key: 'whatsapp_number', value: waNumber.trim() });
       toast.success('Pengaturan disimpan');
     } catch {
       toast.error('Gagal menyimpan');

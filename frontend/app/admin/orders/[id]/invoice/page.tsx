@@ -44,7 +44,7 @@ export default function InvoicePage() {
   const loadOrder = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/orders/${params.id}`);
+      const { data } = await api.get(`/api/admin/orders/${params.id}`);
       setOrder(data);
       // Trigger print dialog after data loads
       setTimeout(() => {

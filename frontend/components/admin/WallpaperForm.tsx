@@ -77,10 +77,10 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
       if (thumbnailFile) fd.append('thumbnail', thumbnailFile);
 
       if (mode === 'edit' && initialData) {
-        await api.put(`/admin/wallpapers/${initialData.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.put(`/api/admin/wallpapers/${initialData.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('Wallpaper diperbarui');
       } else {
-        await api.post('/admin/wallpapers', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post('/api/admin/wallpapers', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('Wallpaper ditambahkan');
       }
       router.push('/admin/wallpapers');

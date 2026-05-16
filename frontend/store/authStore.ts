@@ -27,7 +27,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (email, password) => {
     const guestToken = getGuestToken();
-    const { data } = await api.post('/auth/login', { 
+    const { data } = await api.post('/api/auth/login', { 
       email, 
       password,
       guest_token: guestToken // Send guest token for auto-claim
@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   register: async (name, email, password) => {
     const guestToken = getGuestToken();
-    const { data } = await api.post('/auth/register', { 
+    const { data } = await api.post('/api/auth/register', { 
       name, 
       email, 
       password,
@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   fetchMe: async () => {
     set({ loading: true });
     try {
-      const { data } = await api.get('/auth/me');
+      const { data } = await api.get('/api/auth/me');
       set({ user: data });
     } catch {
       set({ user: null, token: null });

@@ -32,7 +32,7 @@ function PlannerContent() {
       if (projectIdFromUrl) {
         try {
           console.log('[Load Project] Loading project:', projectIdFromUrl);
-          const { data } = await api.get(`/projects/${projectIdFromUrl}`);
+          const { data } = await api.get(`/api/projects/${projectIdFromUrl}`);
           
           // Load project data into editor store
           loadProject(

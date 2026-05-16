@@ -649,7 +649,7 @@ export default function Canvas3D() {
 
       <Canvas
         key={canvasKey}
-        shadows
+        shadows={{ type: THREE.PCFShadowMap }}
         frameloop="always"
         dpr={rendererSettings.dpr}
         camera={{ position: [0, 5, 8], fov: 55, near: 0.1, far: 200 }}

@@ -73,7 +73,7 @@ export default function CatalogPanel({ onDragStart, onAddProduct }: CatalogPanel
         const params: Record<string, string> = { limit: '50' };
         if (search) params.search = search;
         if (category !== 'all') params.category = category;
-        const { data } = await api.get('/products', { params });
+        const { data } = await api.get('/api/products', { params });
         setProducts(data.data || []);
       } catch {
         // fallback ke mock data kalau backend belum jalan

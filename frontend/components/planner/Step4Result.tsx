@@ -24,7 +24,7 @@ export default function Step4Result() {
   const [waNumber, setWaNumber] = useState('');
 
   useEffect(() => {
-    api.get('/wallpapers/settings/whatsapp')
+    api.get('/api/wallpapers/settings/whatsapp')
       .then(r => setWaNumber(r.data.whatsapp_number || ''))
       .catch(() => {});
   }, []);

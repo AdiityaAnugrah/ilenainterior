@@ -167,11 +167,11 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
 
       let productId = d.id;
       if (mode === 'new') {
-        const { data } = await api.post('/admin/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const { data } = await api.post('/api/admin/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         productId = data.id;
         toast.success('Produk berhasil ditambahkan!');
       } else {
-        await api.put(`/admin/products/${d.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.put(`/api/admin/products/${d.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         toast.success('Produk berhasil diperbarui!');
       }
 
@@ -182,7 +182,7 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
         vfd.append('name',  v.name);
         vfd.append('color', v.color);
         vfd.append('stock', String(v.stock));
-        await api.post(`/admin/products/${productId}/variants`, vfd, {
+        await api.post(`/api/admin/products/${productId}/variants`, vfd, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       }
@@ -197,7 +197,7 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
   const deleteVariant = async (v: Variant, i: number) => {
     if (v.id) {
       try {
-        await api.delete(`/admin/products/${d.id}/variants/${v.id}`);
+        await api.delete(`/api/admin/products/${d.id}/variants/${v.id}`);
         toast.success('Varian dihapus');
       } catch { toast.error('Gagal hapus varian'); return; }
     }
