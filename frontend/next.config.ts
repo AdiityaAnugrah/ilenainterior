@@ -154,6 +154,29 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Service worker must never be cached + tell Chrome to wipe
+        // all cache + storage when it's fetched. This forces every
+        // returning visitor to drop stale chunks left over from
+        // previous deploys.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
+          { key: 'Pragma', value: 'no-cache' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+          { key: 'Clear-Site-Data', value: '"cache", "storage"' },
+        ],
+      },
+      {
+        // Force HTML pages to revalidate so users always get the
+        // latest chunk references after a deploy. Static chunks below
+        // keep their immutable cache (content-hashed filenames make
+        // this safe).
+        source: '/((?!_next/static|uploads).*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        ],
+      },
+      {
         source: '/uploads/:path*',
         headers: [
           {

@@ -12,38 +12,34 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
   const [swManager, setSwManager] = useState<ServiceWorkerManager | null>(null);
 
   useEffect(() => {
-    // Only run in browser
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return;
     }
 
-    // Service Worker is currently disabled.
+    // Aggressively tear down any existing service worker.
     //
-    // A previous SW (public/sw.js) was caching stale JS chunks and
-    // serving them across deploys, which broke the app's API URL
-    // handling after we changed lib/api.ts. The new sw.js is a
-    // kill-switch that unregisters itself and clears all caches.
+    // The previous SW (public/sw.js) was caching stale JS chunks and
+    // serving them across deploys, which broke the app after we
+    // changed lib/api.ts. We do NOT register any new SW; instead we:
+    //   1. Look up every existing registration
+    //   2. Force a one-shot update (server now sends Clear-Site-Data
+    //      header on /sw.js so the browser wipes its cache when it
+    //      fetches the new file)
+    //   3. Unregister the worker so it never controls the page again
     //
-    // We still register the kill-switch so existing visitors can be
-    // cleaned up, but we no longer use ServiceWorkerManager (which
-    // would try to keep it alive). Once everyone has been cleaned up
-    // we can drop this registration entirely.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js', { scope: '/' })
-        .then((registration) => {
-          // Force immediate update check so the kill-switch version is
-          // fetched on the very next visit.
-          registration.update().catch(() => {});
-        })
-        .catch(() => {
-          // Ignore registration errors - nothing we can do here.
-        });
-    }
-
-    return () => {
-      // No cleanup needed.
-    };
+    // After all known visitors have been cleaned up we can delete this
+    // file and remove the <ServiceWorkerProvider> wrapper.
+    (async () => {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          try { await reg.update(); } catch { /* ignore */ }
+          try { await reg.unregister(); } catch { /* ignore */ }
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
   }, []);
 
   const handleUpdate = () => {
