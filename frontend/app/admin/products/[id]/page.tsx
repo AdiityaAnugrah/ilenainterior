@@ -11,7 +11,7 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get(`/admin/products/${id}`)
+    api.get(`/api/admin/products/${id}`)
       .then(r => setProduct(r.data))
       .catch(() => router.push('/admin/products'))
       .finally(() => setLoading(false));

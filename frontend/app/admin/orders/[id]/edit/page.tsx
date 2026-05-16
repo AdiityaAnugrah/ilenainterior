@@ -70,7 +70,7 @@ export default function EditOrderPage() {
   const loadOrder = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/orders/${params.id}`);
+      const { data } = await api.get(`/api/admin/orders/${params.id}`);
       
       if (data.status !== 'pending') {
         toast.error('Hanya pesanan dengan status pending yang dapat diedit');
@@ -106,7 +106,7 @@ export default function EditOrderPage() {
 
   const loadProducts = async () => {
     try {
-      const { data } = await api.get('/admin/products', {
+      const { data } = await api.get('/api/admin/products', {
         params: { search: searchProduct, limit: 10 },
       });
       setProducts(data.data);
@@ -174,7 +174,7 @@ export default function EditOrderPage() {
 
     setSaving(true);
     try {
-      await api.put(`/admin/orders/${params.id}`, {
+      await api.put(`/api/admin/orders/${params.id}`, {
         items: items.map((item) => ({
           product_id: item.product_id,
           variant_id: item.variant_id,

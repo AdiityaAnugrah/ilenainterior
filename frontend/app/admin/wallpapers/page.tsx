@@ -29,7 +29,7 @@ export default function AdminWallpapersPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/admin/wallpapers', { params: { search } });
+      const { data } = await api.get('/api/admin/wallpapers', { params: { search } });
       setWallpapers(data.data);
       setTotal(data.total);
     } finally { setLoading(false); }
@@ -43,7 +43,7 @@ export default function AdminWallpapersPage() {
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Hapus wallpaper "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
     try {
-      await api.delete(`/admin/wallpapers/${id}`);
+      await api.delete(`/api/admin/wallpapers/${id}`);
       toast.success('Wallpaper dihapus');
       load();
     } catch { toast.error('Gagal menghapus wallpaper'); }

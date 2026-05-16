@@ -66,7 +66,7 @@ export default function Step3Material() {
   useEffect(() => {
     if (activeTab === 'wallpaper') {
       setLoadingWp(true);
-      api.get('/wallpapers')
+      api.get('/api/wallpapers')
         .then(r => setWallpapers(r.data))
         .catch(() => setWallpapers([]))
         .finally(() => setLoadingWp(false));

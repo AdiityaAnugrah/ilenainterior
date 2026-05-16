@@ -42,7 +42,7 @@ export default function CatalogPage() {
         const params: Record<string, string> = { page: String(page), limit: '20', sort };
         if (search) params.search = search;
         if (category !== 'all') params.category = category;
-        const { data } = await api.get('/products', { params });
+        const { data } = await api.get('/api/products', { params });
         setProducts(data.data);
         setTotal(data.total);
         setTotalPages(data.totalPages);

@@ -29,7 +29,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const { data } = await api.get(`/products/${id}`);
+        const { data } = await api.get(`/api/products/${id}`);
         setProduct(data);
         if (data.variants?.length > 0) setSelectedVariant(data.variants[0]);
       } catch {

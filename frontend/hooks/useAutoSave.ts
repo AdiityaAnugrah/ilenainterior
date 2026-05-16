@@ -41,9 +41,9 @@ export function useAutoSave() {
       };
 
       if (projectId) {
-        await api.put(`/projects/${projectId}`, payload);
+        await api.put(`/api/projects/${projectId}`, payload);
       } else {
-        const { data } = await api.post('/projects', payload);
+        const { data } = await api.post('/api/projects', payload);
         setProjectId(data.id);
         console.log('[Auto-Save] Project created with ID:', data.id);
       }

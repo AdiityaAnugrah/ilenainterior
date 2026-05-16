@@ -44,7 +44,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (!user) return;
-    api.get('/projects')
+    api.get('/api/projects')
       .then(({ data }) => setProjects(data))
       .catch(() => toast.error('Gagal memuat proyek'))
       .finally(() => setLoading(false));
@@ -52,7 +52,7 @@ export default function ProjectsPage() {
 
   const handleOpen = async (id: number) => {
     try {
-      const { data } = await api.get(`/projects/${id}`);
+      const { data } = await api.get(`/api/projects/${id}`);
       const config: Partial<RoomConfig> = data.room_config ?? {};
       const items: PlacedItem[] = (data.items ?? []).map((i: any) => ({
         id:          i.id?.toString() ?? crypto.randomUUID(),
@@ -80,7 +80,7 @@ export default function ProjectsPage() {
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Hapus proyek "${name}"?`)) return;
     try {
-      await api.delete(`/projects/${id}`);
+      await api.delete(`/api/projects/${id}`);
       setProjects((p) => p.filter((x) => x.id !== id));
       toast.success('Proyek dihapus');
     } catch {

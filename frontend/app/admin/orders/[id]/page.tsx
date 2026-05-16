@@ -102,7 +102,7 @@ export default function OrderDetailPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/orders/${params.id}`);
+      const { data } = await api.get(`/api/admin/orders/${params.id}`);
       setOrder(data);
     } catch (error) {
       toast.error('Gagal memuat detail pesanan');
@@ -121,7 +121,7 @@ export default function OrderDetailPage() {
 
     setUpdating(true);
     try {
-      await api.put(`/admin/orders/${order.id}/status`, { status: newStatus });
+      await api.put(`/api/admin/orders/${order.id}/status`, { status: newStatus });
       toast.success('Status pesanan berhasil diperbarui');
       setShowStatusModal(false);
       setNewStatus('');
@@ -143,7 +143,7 @@ export default function OrderDetailPage() {
       return;
 
     try {
-      await api.delete(`/admin/orders/${order.id}`);
+      await api.delete(`/api/admin/orders/${order.id}`);
       toast.success('Pesanan berhasil dihapus');
       router.push('/admin/orders');
     } catch (error) {

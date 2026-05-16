@@ -124,7 +124,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const refreshNotifications = useCallback(async () => {
     try {
-      const response = await api.get('/notifications?page=1&limit=50');
+      const response = await api.get('/api/notifications?page=1&limit=50');
       setNotifications(response.data.data || []);
       setUnreadCount(response.data.unreadCount || 0);
     } catch (error) {
@@ -134,7 +134,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await api.get('/notifications/unread-count');
+      const response = await api.get('/api/notifications/unread-count');
       setUnreadCount(response.data.count || 0);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
@@ -144,7 +144,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   const markAsRead = useCallback(
     async (notificationId: number) => {
       try {
-        const response = await api.put(`/notifications/${notificationId}/read`);
+        const response = await api.put(`/api/notifications/${notificationId}/read`);
         
         // Update local state
         setNotifications((prev) =>
@@ -160,7 +160,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const markAllAsRead = useCallback(async () => {
     try {
-      await api.put('/notifications/read-all');
+      await api.put('/api/notifications/read-all');
       
       // Update local state
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
