@@ -366,7 +366,7 @@ export default function AdminProductsPage() {
 
   const handlePreview = (product: Product) => {
     const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL || 'http://localhost:3000';
-    const previewUrl = `${clientUrl}/products/${product.id}`;
+    const previewUrl = `${clientUrl}/product/${product.id}`;
     window.open(previewUrl, '_blank');
   };
 
