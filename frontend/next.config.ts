@@ -227,6 +227,20 @@ const nextConfig: NextConfig = {
         source: '/uploads/:path*',
         destination: 'http://localhost:5000/uploads/:path*',
       },
+      // ----------------------------------------------------------------
+      // Legacy URL catch-alls.
+      //
+      // Some users still have JS chunks cached from before we hard-coded
+      // the /api prefix at every call site. Those chunks call paths like
+      // /auth/login, /notifications, /wallpapers without the /api
+      // prefix. Forward them to the backend so login keeps working even
+      // for stale clients. Safe because none of these paths are also
+      // Next.js pages.
+      // Remove these once cache rotation is complete (a week or two).
+      // ----------------------------------------------------------------
+      { source: '/auth/:path*',          destination: 'http://localhost:5000/api/auth/:path*' },
+      { source: '/notifications/:path*', destination: 'http://localhost:5000/api/notifications/:path*' },
+      { source: '/wallpapers/:path*',    destination: 'http://localhost:5000/api/wallpapers/:path*' },
     ];
   },
 
