@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getGuestToken, setGuestToken } from './guestToken';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? '/api',
   withCredentials: true,
 });
 
