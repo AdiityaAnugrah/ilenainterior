@@ -11,6 +11,49 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   const [swManager, setSwManager] = useState<ServiceWorkerManager | null>(null);
 
+  // Auto-recover from ChunkLoadError after a deploy.
+  // When the server rotates its chunks, any tab still running the
+  // previous build will 404 on dynamic imports. Catch that here and
+  // reload once (guarded by sessionStorage so we don't loop).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onChunkError = (msg: string) => {
+      if (!/ChunkLoadError|Loading chunk|Failed to load chunk/i.test(msg)) {
+        return;
+      }
+      if (sessionStorage.getItem('chunk-reload-attempted')) {
+        // Already tried reloading once - don't loop.
+        return;
+      }
+      sessionStorage.setItem('chunk-reload-attempted', '1');
+      window.location.reload();
+    };
+
+    const errorHandler = (e: ErrorEvent) => onChunkError(e.message || '');
+    const rejectionHandler = (e: PromiseRejectionEvent) => {
+      const reason = e.reason;
+      const msg =
+        (reason && (reason.message || String(reason))) || '';
+      onChunkError(msg);
+    };
+
+    window.addEventListener('error', errorHandler);
+    window.addEventListener('unhandledrejection', rejectionHandler);
+
+    // If the page loaded cleanly, clear the guard so a future
+    // ChunkLoadError can trigger another reload.
+    const clearGuard = setTimeout(() => {
+      sessionStorage.removeItem('chunk-reload-attempted');
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('error', errorHandler);
+      window.removeEventListener('unhandledrejection', rejectionHandler);
+      clearTimeout(clearGuard);
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return;

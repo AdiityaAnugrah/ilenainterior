@@ -154,16 +154,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Service worker must never be cached + tell Chrome to wipe
-        // all cache + storage when it's fetched. This forces every
-        // returning visitor to drop stale chunks left over from
-        // previous deploys.
+        // Service worker must never be cached + wipe stale chunks
+        // when /sw.js is fetched. We only clear "cache" (HTTP cache +
+        // Cache API) here, NOT "storage" - clearing storage would
+        // wipe localStorage and force every user to re-login on each
+        // deploy. The kill-switch SW handles its own unregistration
+        // in its activate handler.
         source: '/sw.js',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
           { key: 'Pragma', value: 'no-cache' },
           { key: 'Service-Worker-Allowed', value: '/' },
-          { key: 'Clear-Site-Data', value: '"cache", "storage"' },
+          { key: 'Clear-Site-Data', value: '"cache"' },
         ],
       },
       {
