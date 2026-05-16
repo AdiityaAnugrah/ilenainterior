@@ -215,6 +215,18 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    return [
+      {
+        // Legacy admin Preview button used the plural form. Permanent
+        // redirect so old links / bookmarks land on the real page.
+        source: '/products/:id',
+        destination: '/product/:id',
+        permanent: true,
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {

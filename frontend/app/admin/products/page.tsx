@@ -365,7 +365,12 @@ export default function AdminProductsPage() {
   };
 
   const handlePreview = (product: Product) => {
-    const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL || 'http://localhost:3000';
+    // Use window.location.origin so we always open on the same host
+    // the admin is viewing - prevents an accidental localhost fallback
+    // when NEXT_PUBLIC_CLIENT_URL is not baked into the build.
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : '';
+    const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL || origin;
     const previewUrl = `${clientUrl}/product/${product.id}`;
     window.open(previewUrl, '_blank');
   };
