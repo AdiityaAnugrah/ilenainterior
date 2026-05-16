@@ -235,8 +235,14 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       return;
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const socketUrl = apiUrl.replace(/\/api\/?$/, '');
+    // Derive socket server URL from NEXT_PUBLIC_API_URL.
+    // In local dev:   NEXT_PUBLIC_API_URL=http://localhost:5000/api  → http://localhost:5000
+    // In production:  NEXT_PUBLIC_API_URL=/api (relative) → use window.location.origin
+    //                 so nginx can proxy /socket.io/ to the backend port.
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const socketUrl = apiUrl.startsWith('http')
+      ? apiUrl.replace(/\/api\/?$/, '')
+      : (typeof window !== 'undefined' ? window.location.origin : '');
 
     console.log('🔌 Attempting to connect to Socket.io:', socketUrl);
 
