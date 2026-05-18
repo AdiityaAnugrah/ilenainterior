@@ -2,12 +2,13 @@
 import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Upload, Box, X, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Upload, Box, X, Plus, Trash2, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import api from '@/lib/api';
 import { cn, formatPrice } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { optimizeGlb, optimizeImage, fmt, type OptimizeStats } from '@/lib/optimizeAssets';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
 
@@ -29,11 +30,15 @@ interface ProductFormProps {
 
 function DropZone({
   label, hint, accept, file, existingUrl, onFile, icon: Icon,
+  busy, busyStage, stats,
 }: {
   label: string; hint: string; accept: string;
   file: File | null; existingUrl?: string | null;
   onFile: (f: File | null) => void;
   icon: React.FC<{ size?: number; className?: string; strokeWidth?: number }>;
+  busy?: boolean;
+  busyStage?: string;
+  stats?: OptimizeStats | null;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -54,16 +59,23 @@ function DropZone({
     <div className="flex flex-col gap-1.5">
       <label className="text-sm font-medium text-stone-700">{label}</label>
       <div
-        onClick={() => ref.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onClick={() => !busy && ref.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true); }}
         onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
+        onDrop={(e) => { if (!busy) handleDrop(e); else e.preventDefault(); }}
         className={cn(
-          'relative border-2 border-dashed rounded-xl cursor-pointer transition-all overflow-hidden',
+          'relative border-2 border-dashed rounded-xl transition-all overflow-hidden',
+          busy ? 'cursor-wait opacity-80' : 'cursor-pointer',
           dragging ? 'border-stone-500 bg-stone-100' : 'border-stone-200 hover:border-stone-400 bg-stone-50',
           isImage ? 'aspect-square' : 'h-28'
         )}
       >
+        {busy && (
+          <div className="absolute inset-0 z-10 bg-white/85 backdrop-blur-sm flex flex-col items-center justify-center gap-2 p-3">
+            <Loader2 size={22} className="text-stone-700 animate-spin" />
+            <p className="text-xs text-stone-700 font-medium text-center">{busyStage || 'Mengoptimasi...'}</p>
+          </div>
+        )}
         {previewSrc && isImage ? (
           <>
             <Image 
@@ -109,10 +121,22 @@ function DropZone({
       </div>
       {file && (
         <div className="flex items-center justify-between text-xs text-stone-500 bg-stone-100 rounded-lg px-3 py-1.5">
-          <span className="truncate">{file.name}</span>
+          <span className="truncate">{file.name} · {fmt(file.size)}</span>
           <button onClick={(e) => { e.stopPropagation(); onFile(null); }} className="text-stone-400 hover:text-red-500 ml-2 flex-shrink-0">
             <X size={12} />
           </button>
+        </div>
+      )}
+      {stats && stats.reductionPct > 0 && (
+        <div className="flex items-center gap-2 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1.5">
+          <Sparkles size={11} className="flex-shrink-0" />
+          <span className="leading-tight">
+            <span className="line-through text-emerald-500/70">{fmt(stats.originalSize)}</span>
+            {' → '}
+            <span className="font-semibold">{fmt(stats.optimizedSize)}</span>
+            {' '}
+            <span className="text-emerald-600">(−{stats.reductionPct}%)</span>
+          </span>
         </div>
       )}
     </div>
@@ -142,6 +166,61 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
   const [variants,  setVariants]  = useState<Variant[]>(d.variants ?? []);
   const [loading,   setLoading]   = useState(false);
 
+  const [thumbBusy,  setThumbBusy]  = useState(false);
+  const [thumbStage, setThumbStage] = useState('');
+  const [thumbStats, setThumbStats] = useState<OptimizeStats | null>(null);
+
+  const [glbBusy,  setGlbBusy]  = useState(false);
+  const [glbStage, setGlbStage] = useState('');
+  const [glbStats, setGlbStats] = useState<OptimizeStats | null>(null);
+
+  const [uploadPct, setUploadPct] = useState(0);
+
+  const handleThumbnail = async (f: File | null) => {
+    if (!f) {
+      setThumbnail(null); setThumbStats(null); return;
+    }
+    setThumbBusy(true); setThumbStage('Mengompres foto...'); setThumbStats(null);
+    try {
+      const { blob, stats, filename } = await optimizeImage(f, { maxDimension: 2048, quality: 0.85 });
+      const optimized = new File([blob], filename, { type: blob.type || 'image/webp' });
+      setThumbnail(optimized);
+      setThumbStats(stats);
+    } catch (err) {
+      console.error('Image optimize failed', err);
+      setThumbnail(f);
+      toast.error('Optimasi foto gagal — file asli akan dipakai');
+    } finally {
+      setThumbBusy(false); setThumbStage('');
+    }
+  };
+
+  const handleModel = async (f: File | null) => {
+    if (!f) {
+      setModel3d(null); setGlbStats(null); return;
+    }
+    setGlbBusy(true); setGlbStage('Memulai...'); setGlbStats(null);
+    try {
+      const { blob, stats } = await optimizeGlb(f, {
+        maxTextureSize: 2048,
+        textureQuality: 0.85,
+        onStage: setGlbStage,
+      });
+      const optimized = new File([blob], f.name, { type: 'model/gltf-binary' });
+      setModel3d(optimized);
+      setGlbStats(stats);
+      if (stats.reductionPct > 0) {
+        toast.success(`GLB dikompres ${stats.reductionPct}% (${fmt(stats.originalSize)} → ${fmt(stats.optimizedSize)})`);
+      }
+    } catch (err) {
+      console.error('GLB optimize failed', err);
+      setModel3d(f);
+      toast.error('Optimasi GLB gagal — file asli akan diupload');
+    } finally {
+      setGlbBusy(false); setGlbStage('');
+    }
+  };
+
   const set = (k: keyof typeof form, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
   const addVariant = () => setVariants(v => [...v, { name: '', color: '#888888', stock: 0 }]);
@@ -158,20 +237,27 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
       toast.error('Foto produk wajib diupload'); return;
     }
 
-    setLoading(true);
+    setLoading(true); setUploadPct(0);
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
       if (thumbnail) fd.append('thumbnail', thumbnail);
       if (model3d)   fd.append('model_3d',  model3d);
 
+      const uploadCfg = {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt: { loaded: number; total?: number }) => {
+          if (evt.total) setUploadPct(Math.round((evt.loaded / evt.total) * 100));
+        },
+      };
+
       let productId = d.id;
       if (mode === 'new') {
-        const { data } = await api.post('/api/admin/products', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        const { data } = await api.post('/api/admin/products', fd, uploadCfg);
         productId = data.id;
         toast.success('Produk berhasil ditambahkan!');
       } else {
-        await api.put(`/api/admin/products/${d.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.put(`/api/admin/products/${d.id}`, fd, uploadCfg);
         toast.success('Produk berhasil diperbarui!');
       }
 
@@ -191,7 +277,7 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
     } catch (err: unknown) {
       const msg = (err as any)?.response?.data?.message ?? 'Gagal menyimpan produk';
       toast.error(msg);
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setUploadPct(0); }
   };
 
   const deleteVariant = async (v: Variant, i: number) => {
@@ -216,8 +302,11 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
             accept="image/jpeg,image/png,image/webp"
             file={thumbnail}
             existingUrl={d.thumbnail}
-            onFile={setThumbnail}
+            onFile={handleThumbnail}
             icon={Upload}
+            busy={thumbBusy}
+            busyStage={thumbStage}
+            stats={thumbStats}
           />
           <DropZone
             label="Model 3D (.glb)"
@@ -225,9 +314,24 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
             accept=".glb"
             file={model3d}
             existingUrl={d.model_3d}
-            onFile={setModel3d}
+            onFile={handleModel}
             icon={Box}
+            busy={glbBusy}
+            busyStage={glbStage}
+            stats={glbStats}
           />
+          {/* Auto-optimize banner */}
+          <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+            <p className="text-xs font-semibold text-emerald-800 mb-2 flex items-center gap-1.5">
+              <Sparkles size={13} /> Auto-optimasi aktif
+            </p>
+            <ul className="text-xs text-emerald-700 space-y-1 list-disc pl-4">
+              <li>Foto otomatis diresize max 2048px & dikonversi WebP.</li>
+              <li>GLB otomatis dikompres (Meshopt + texture resize) — bisa turun 60–80%.</li>
+              <li>Drop file mentahan dari Polycam/KIRI/Scaniverse langsung — biarkan browser yang mengoptimasi.</li>
+            </ul>
+          </div>
+
           {/* GLB scanning guide */}
           <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
             <p className="text-xs font-semibold text-blue-700 mb-2 flex items-center gap-1.5">
@@ -238,19 +342,18 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
               <li>🤖 <strong>Android:</strong> KIRI Engine atau Scaniverse</li>
               <li>💻 <strong>PC:</strong> Blender (gratis, modelling manual)</li>
             </ul>
-            <p className="text-[10px] text-blue-400 mt-2">Scan produk dari berbagai sudut → export .glb → upload di sini</p>
+            <p className="text-[10px] text-blue-400 mt-2">Scan produk → export .glb → drop di sini (max 50 MB).</p>
           </div>
 
-          {/* GLB Optimization Warning */}
+          {/* Tips kalau masih kebesaran */}
           <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
             <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
-              <AlertCircle size={14} /> Syarat File .glb (Agar Web Ringan)
+              <AlertCircle size={14} /> Kalau hasil akhir masih &gt;5 MB
             </p>
             <ul className="text-xs text-amber-700 space-y-2 list-disc pl-4">
-              <li><strong>Wajib Kompresi:</strong> Gunakan format Draco (bisa compress via gltf.report agar ukuran turun ~90%).</li>
-              <li><strong>Tekstur:</strong> Resolusi maksimal 1024×1024 atau 2048×2048 (Jangan gunakan 4K).</li>
-              <li><strong>Polygon:</strong> Target maksimal di bawah 50.000 polygon per objek furnitur.</li>
-              <li><strong>Satu Item:</strong> Jangan gabungkan banyak furnitur dalam satu file .glb.</li>
+              <li>Pre-process di <strong>gltf.report</strong> (aktifkan Draco) — bisa turun ~90%.</li>
+              <li>Kurangi polygon di Blender (Modifier → Decimate, ratio 0.3–0.5).</li>
+              <li>Satu file = satu produk. Jangan gabungkan banyak furnitur.</li>
             </ul>
           </div>
         </div>
@@ -374,14 +477,40 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
             ))}
           </div>
 
+          {/* Upload progress */}
+          {loading && uploadPct > 0 && (
+            <div className="bg-white rounded-2xl border border-stone-100 p-4 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-stone-600 font-medium">Mengupload ke server...</span>
+                <span className="text-stone-500 tabular-nums">{uploadPct}%</span>
+              </div>
+              <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-stone-700 transition-[width] duration-150"
+                  style={{ width: `${uploadPct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Submit */}
           <div className="flex items-center gap-3">
-            <Button type="submit" loading={loading} size="lg">
+            <Button
+              type="submit"
+              loading={loading}
+              size="lg"
+              disabled={loading || thumbBusy || glbBusy}
+            >
               {mode === 'new' ? 'Simpan Produk' : 'Perbarui Produk'}
             </Button>
             <Button type="button" variant="outline" size="lg" onClick={() => router.push('/admin/products')}>
               Batal
             </Button>
+            {(thumbBusy || glbBusy) && (
+              <span className="text-xs text-stone-500 flex items-center gap-1.5">
+                <Loader2 size={12} className="animate-spin" /> Tunggu optimasi selesai...
+              </span>
+            )}
           </div>
         </div>
       </div>
