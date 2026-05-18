@@ -50,6 +50,7 @@ app.use('/api/projects', require('./routes/projects'));
 app.use('/api/orders',      require('./routes/orders'));
 app.use('/api/wallpapers',  require('./routes/wallpapers'));
 app.use('/api/admin',       require('./routes/admin'));
+app.use('/api/admin',       require('./routes/admin-import'));
 app.use('/api/notifications', require('./routes/notifications'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'ILENA INTERIOR API' }));
