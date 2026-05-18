@@ -14,6 +14,7 @@
 import * as THREE from 'three';
 import { GLTFLoader, GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { CacheManager } from '../cache/CacheManager';
 import { PerformanceMonitor } from '../performance/PerformanceMonitor';
 
@@ -90,6 +91,10 @@ export class AssetLoader {
     this.dracoLoader = new DRACOLoader();
     this.dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/'); // Use CDN for Draco decoder
     this.gltfLoader.setDRACOLoader(this.dracoLoader);
+
+    // Setup Meshopt decoder for EXT_meshopt_compression
+    // (admin upload pipeline applies Meshopt compression to GLBs)
+    this.gltfLoader.setMeshoptDecoder(MeshoptDecoder);
   }
 
   // ==================== Model Loading ====================
