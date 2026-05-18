@@ -2,9 +2,10 @@
 import { useState, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { ArrowLeft, Upload, Save, X } from 'lucide-react';
+import { ArrowLeft, Upload, Save, X, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { optimizeImage, fmt, type OptimizeStats } from '@/lib/optimizeAssets';
 
 const CATEGORIES = [
   { value: 'polos', label: 'Polos' },
@@ -51,12 +52,28 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
   const [isActive, setIsActive] = useState(initialData?.is_active ?? 1);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(initialData?.thumbnail ?? null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbBusy, setThumbBusy] = useState(false);
+  const [thumbStats, setThumbStats] = useState<OptimizeStats | null>(null);
+  const [uploadPct, setUploadPct] = useState(0);
 
-  const handleThumbnail = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbnail = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setThumbnailFile(file);
-    setThumbnailPreview(URL.createObjectURL(file));
+    setThumbBusy(true); setThumbStats(null);
+    try {
+      const { blob, stats, filename } = await optimizeImage(file, { maxDimension: 2048, quality: 0.85 });
+      const optimized = new File([blob], filename, { type: blob.type || 'image/webp' });
+      setThumbnailFile(optimized);
+      setThumbnailPreview(URL.createObjectURL(optimized));
+      setThumbStats(stats);
+    } catch (err) {
+      console.error('Image optimize failed', err);
+      setThumbnailFile(file);
+      setThumbnailPreview(URL.createObjectURL(file));
+      toast.error('Optimasi foto gagal — file asli akan dipakai');
+    } finally {
+      setThumbBusy(false);
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -64,7 +81,7 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
     if (!name.trim()) { toast.error('Nama wajib diisi'); return; }
     if (!pricePerMeter || parseFloat(pricePerMeter) <= 0) { toast.error('Harga per meter wajib diisi'); return; }
 
-    setSaving(true);
+    setSaving(true); setUploadPct(0);
     try {
       const fd = new FormData();
       fd.append('name', name);
@@ -76,18 +93,25 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
       fd.append('is_active', String(isActive));
       if (thumbnailFile) fd.append('thumbnail', thumbnailFile);
 
+      const uploadCfg = {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt: { loaded: number; total?: number }) => {
+          if (evt.total) setUploadPct(Math.round((evt.loaded / evt.total) * 100));
+        },
+      };
+
       if (mode === 'edit' && initialData) {
-        await api.put(`/api/admin/wallpapers/${initialData.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.put(`/api/admin/wallpapers/${initialData.id}`, fd, uploadCfg);
         toast.success('Wallpaper diperbarui');
       } else {
-        await api.post('/api/admin/wallpapers', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post('/api/admin/wallpapers', fd, uploadCfg);
         toast.success('Wallpaper ditambahkan');
       }
       router.push('/admin/wallpapers');
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Gagal menyimpan');
     } finally {
-      setSaving(false);
+      setSaving(false); setUploadPct(0);
     }
   };
 
@@ -114,13 +138,18 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
           <label className="block text-xs font-semibold text-stone-600 mb-1.5">Gambar Thumbnail</label>
           <div className="flex items-center gap-4">
             <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-dashed border-stone-200 bg-stone-50">
+              {thumbBusy && (
+                <div className="absolute inset-0 z-10 bg-white/85 flex items-center justify-center">
+                  <Loader2 size={18} className="text-stone-700 animate-spin" />
+                </div>
+              )}
               {thumbnailPreview ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={thumbnailPreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
-                    onClick={() => { setThumbnailPreview(null); setThumbnailFile(null); }}
+                    onClick={() => { setThumbnailPreview(null); setThumbnailFile(null); setThumbStats(null); }}
                     className="absolute top-1 right-1 p-0.5 bg-red-500 text-white rounded-full"
                   >
                     <X size={10} />
@@ -129,7 +158,7 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
               ) : (
                 <div
                   className="w-full h-full flex items-center justify-center cursor-pointer"
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => !thumbBusy && fileRef.current?.click()}
                   style={{ backgroundColor: color }}
                 >
                   <Upload size={16} className="text-white/50" />
@@ -137,9 +166,17 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
               )}
             </div>
             <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp" onChange={handleThumbnail} className="hidden" />
-            <button type="button" onClick={() => fileRef.current?.click()} className="text-xs text-stone-500 hover:text-stone-700 underline">
-              {thumbnailPreview ? 'Ganti gambar' : 'Upload gambar'}
-            </button>
+            <div className="flex flex-col gap-1">
+              <button type="button" disabled={thumbBusy} onClick={() => fileRef.current?.click()} className="text-xs text-stone-500 hover:text-stone-700 underline disabled:opacity-50 text-left">
+                {thumbBusy ? 'Mengompres...' : thumbnailPreview ? 'Ganti gambar' : 'Upload gambar'}
+              </button>
+              {thumbStats && thumbStats.reductionPct > 0 && (
+                <span className="text-[11px] text-emerald-700 flex items-center gap-1">
+                  <Sparkles size={10} />
+                  {fmt(thumbStats.originalSize)} → {fmt(thumbStats.optimizedSize)} (−{thumbStats.reductionPct}%)
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -242,11 +279,24 @@ export default function WallpaperForm({ mode, initialData }: WallpaperFormProps)
           </div>
         )}
 
+        {/* Upload progress */}
+        {saving && uploadPct > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-stone-600">Mengupload...</span>
+              <span className="text-stone-500 tabular-nums">{uploadPct}%</span>
+            </div>
+            <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+              <div className="h-full bg-stone-700 transition-[width] duration-150" style={{ width: `${uploadPct}%` }} />
+            </div>
+          </div>
+        )}
+
         {/* Submit */}
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || thumbBusy}
             className="flex items-center gap-2 bg-stone-800 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-700 transition-colors disabled:opacity-50"
           >
             <Save size={15} />

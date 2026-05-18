@@ -30,8 +30,8 @@ const storage = multer.diskStorage({
   },
 });
 
-const IMAGE_MAX = 5  * 1024 * 1024;  //  5 MB
-const MODEL_MAX = 15 * 1024 * 1024;  // 15 MB
+const IMAGE_MAX = 10 * 1024 * 1024;  // 10 MB
+const MODEL_MAX = 50 * 1024 * 1024;  // 50 MB
 
 const fileFilter = (req, file, cb) => {
   const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.glb'];
