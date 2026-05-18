@@ -325,6 +325,24 @@ export default function Canvas3D() {
   const frustumCullerRef = useRef<FrustumCuller | null>(null);
   const qualityManagerRef = useRef<QualityManager | null>(null);
   const rendererOptimizerRef = useRef<RendererOptimizer | null>(null);
+  const glRef = useRef<THREE.WebGLRenderer | null>(null);
+
+  // Hard-release WebGL context on unmount.
+  // Browser limits ~16 active contexts; without explicit cleanup, switching
+  // between viewMode (2d/3d/walk) or planner steps leaks contexts → eventually
+  // "Too many active WebGL contexts" → oldest context killed → model hilang.
+  useEffect(() => () => {
+    const gl = glRef.current;
+    if (!gl) return;
+    try {
+      gl.dispose();
+      const ext = gl.getContext().getExtension('WEBGL_lose_context');
+      ext?.loseContext();
+    } catch (err) {
+      console.warn('[Canvas3D] cleanup error:', err);
+    }
+    glRef.current = null;
+  }, []);
   const [transformMode, setTransformMode] = useState<TransformMode>('translate');
   const [canvasKey, setCanvasKey] = useState(0); // Key to force Canvas remount when quality changes
   const [showLowEndNotification, setShowLowEndNotification] = useState(false);
@@ -662,6 +680,7 @@ export default function Canvas3D() {
         }}
         style={{ background: isNight ? '#0D1020' : '#E8E5E0' }}
         onCreated={(state) => {
+          glRef.current = state.gl;
           console.log('[Canvas3D] Canvas created successfully', {
             gl: state.gl.capabilities,
             camera: state.camera.position,

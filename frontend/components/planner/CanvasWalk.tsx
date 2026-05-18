@@ -75,8 +75,23 @@ export default function CanvasWalk() {
   const [camPos, setCamPos]     = useState({ x: 0, z: 0 });
   const [camAngle, setCamAngle] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const glRef = useRef<THREE.WebGLRenderer | null>(null);
   const { timeOfDay, setTimeOfDay } = useEditorStore();
   const isNight = timeOfDay === 'night';
+
+  // Hard-release WebGL context on unmount (lihat catatan di Canvas3D)
+  useEffect(() => () => {
+    const gl = glRef.current;
+    if (!gl) return;
+    try {
+      gl.dispose();
+      const ext = gl.getContext().getExtension('WEBGL_lose_context');
+      ext?.loseContext();
+    } catch (err) {
+      console.warn('[CanvasWalk] cleanup error:', err);
+    }
+    glRef.current = null;
+  }, []);
 
   const handleEnter = useCallback(() => {
     setActive(true);
@@ -112,6 +127,7 @@ export default function CanvasWalk() {
         camera={{ fov: 75, near: 0.05, far: 100 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
         style={{ background: isNight ? '#0D1020' : '#E8E5E0' }}
+        onCreated={(state) => { glRef.current = state.gl; }}
       >
         <Suspense fallback={null}>
           <WalkScene active={active} onExit={handleExit} onCamUpdate={handleCamUpdate} />
