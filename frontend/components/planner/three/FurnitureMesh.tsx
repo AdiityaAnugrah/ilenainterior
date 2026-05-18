@@ -344,89 +344,16 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
     };
   }, [gltf, dims.width, dims.height, dims.depth]);
 
-  // Task 8.1: Rendering state validation with recovery (Phase 2)
-  // After model loads, verify it's actually visible in the scene graph
-  // If not visible, trigger re-render by updating state (max 3 retries)
-  // Requirements: 2.1, 2.5
-  const [retryCount, setRetryCount] = useState(0);
-  const [forceRenderKey, setForceRenderKey] = useState(0);
-  const [shouldUseFallback, setShouldUseFallback] = useState(false);
-  const MAX_RETRIES = 3;
-
-  useEffect(() => {
-    if (!cloned || loading || error) {
-      return; // Skip validation if model not loaded or in error state
-    }
-
-    // Immediate validation after model loads
-    const validateRenderingState = () => {
-      const hasParent = cloned.parent !== null && cloned.parent !== undefined;
-      const isVisible = cloned.visible === true;
-      
-      if (!hasParent || !isVisible) {
-        const timestamp = new Date().toISOString();
-        console.warn(`[GLBModel] Rendering state mismatch detected at ${timestamp}`);
-        console.warn(`[GLBModel] Model: ${itemId}, URL: ${url}`);
-        console.warn(`[GLBModel] Has parent: ${hasParent}, Is visible: ${isVisible}`);
-        console.warn(`[GLBModel] Model loaded successfully but not visible in scene graph`);
-        
-        // Log detailed state for debugging
-        if (!hasParent) {
-          console.warn(`[GLBModel] Model has no parent - not attached to scene graph`);
-        }
-        if (!isVisible) {
-          console.warn(`[GLBModel] Model visible flag is false - hidden from rendering`);
-        }
-
-        // Task 8.1: Trigger re-render if retry limit not reached
-        if (retryCount < MAX_RETRIES) {
-          console.log(`[GLBModel] Triggering re-render attempt ${retryCount + 1}/${MAX_RETRIES} for ${itemId}`);
-          setRetryCount(prev => prev + 1);
-          setForceRenderKey(prev => prev + 1); // Force component refresh
-        } else {
-          // Task 8.2: Fallback rendering on validation failure
-          // After 3 failed retry attempts, render ColorBox fallback instead of empty space
-          // Requirements: 2.3
-          console.error(`[GLBModel] Max retry attempts (${MAX_RETRIES}) reached for ${itemId}`);
-          console.error(`[GLBModel] Triggering fallback rendering - ColorBox will be displayed`);
-          console.error(`[GLBModel] Detailed error information:`);
-          console.error(`[GLBModel]   - Model URL: ${url}`);
-          console.error(`[GLBModel]   - Item ID: ${itemId}`);
-          console.error(`[GLBModel]   - Has parent: ${hasParent}`);
-          console.error(`[GLBModel]   - Is visible: ${isVisible}`);
-          console.error(`[GLBModel]   - Retry count: ${retryCount}`);
-          console.error(`[GLBModel]   - Model loaded: ${!!cloned}`);
-          console.error(`[GLBModel]   - Loading state: ${loading}`);
-          console.error(`[GLBModel]   - Error state: ${!!error}`);
-          
-          // Set flag to trigger fallback rendering
-          setShouldUseFallback(true);
-        }
-      } else {
-        console.log(`[GLBModel] Rendering state validation passed for ${itemId}`);
-        console.log(`[GLBModel] Model has parent: ${hasParent}, visible: ${isVisible}`);
-        
-        // Reset retry counter on successful validation
-        if (retryCount > 0) {
-          console.log(`[GLBModel] Rendering recovered after ${retryCount} retries for ${itemId}`);
-          setRetryCount(0);
-        }
-      }
-    };
-
-    // Validate immediately after model loads
-    validateRenderingState();
-
-    // Periodic validation check every 5 seconds
-    const validationInterval = setInterval(() => {
-      validateRenderingState();
-    }, 5000);
-
-    // Cleanup: clear interval when component unmounts or model changes
-    return () => {
-      clearInterval(validationInterval);
-    };
-  }, [cloned, loading, error, itemId, url, retryCount, forceRenderKey]);
+  // Task 8.1/8.2 dihapus: "rendering state validation" lama justru
+  // BIKIN model hilang random. Skemanya: tiap 5 detik cek cloned.parent.
+  // Kalau null → setForceRenderKey++ → <group key={forceRenderKey}> remount
+  // → cloned sempat detached selama reconciliation → validasi berikutnya
+  // baca parent=null lagi → loop sampai kasih ColorBox "Model unavailable".
+  //
+  // Trust R3F untuk attach mesh ke scene graph. Kalau ada error real,
+  // sudah ditangani oleh error/loading state di useEffect loader di atas.
+  const shouldUseFallback = false;
+  const forceRenderKey = 0;
 
   // FPS monitoring with quality reduction trigger (Phase 3 - Performance)
   // Track frame timestamps and calculate rolling average FPS over 2-second window
