@@ -12,11 +12,17 @@ export default function Error({
   useEffect(() => {
     console.error('[app/error]', error);
 
-    // Auto-recover dari ChunkLoadError (terjadi kalau user buka tab lama
-    // setelah deploy baru — chunk hash-nya sudah berubah). Reload sekali,
-    // dijaga sessionStorage supaya tidak loop.
+    // Auto-recover dari error yang lumrah terjadi setelah deploy baru:
+    //   - ChunkLoadError: chunk hash sudah berubah, tab lama 404 saat lazy import
+    //   - Failed to find Server Action: action ID berbeda antara HTML lama
+    //     dan server baru (lihat NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)
+    // Reload sekali; dijaga sessionStorage supaya tidak loop.
     const msg = error?.message || String(error);
-    if (/ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported)/i.test(msg)) {
+    if (
+      /ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported)|Failed to find Server Action/i.test(
+        msg
+      )
+    ) {
       if (!sessionStorage.getItem('chunk-reload-attempted')) {
         sessionStorage.setItem('chunk-reload-attempted', '1');
         window.location.reload();

@@ -13,7 +13,11 @@ export default function GlobalError({
     console.error('[app/global-error]', error);
 
     const msg = error?.message || String(error);
-    if (/ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported)/i.test(msg)) {
+    if (
+      /ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported)|Failed to find Server Action/i.test(
+        msg
+      )
+    ) {
       if (typeof window !== 'undefined' && !sessionStorage.getItem('chunk-reload-attempted')) {
         sessionStorage.setItem('chunk-reload-attempted', '1');
         window.location.reload();
