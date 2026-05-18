@@ -316,6 +316,22 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
     }
 
     const cloned = gltf.scene.clone(true);
+
+    // Fix: setelah Meshopt/quantize compression, geometry boundingSphere &
+    // boundingBox bisa stale → frustum culler mengira mesh di luar view →
+    // model hilang random saat drag/orbit. Re-compute bounds + disable
+    // culling sebagai safety net per-mesh.
+    cloned.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const m = obj as THREE.Mesh;
+        if (m.geometry) {
+          m.geometry.computeBoundingBox();
+          m.geometry.computeBoundingSphere();
+        }
+        m.frustumCulled = false;
+      }
+    });
+
     const box = new THREE.Box3().setFromObject(cloned);
     const size = new THREE.Vector3();
     box.getSize(size);
