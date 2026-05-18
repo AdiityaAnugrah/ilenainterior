@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
@@ -438,12 +438,20 @@ export default function AdminProductsPage() {
           <h1 className="text-2xl font-bold text-stone-900">Produk</h1>
           <p className="text-stone-500 text-sm mt-1">{total} produk total</p>
         </div>
-        <Link
-          href="/admin/products/new"
-          className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-700 transition-colors"
-        >
-          <Plus size={16} /> Tambah Produk
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/products/import"
+            className="flex items-center gap-2 bg-white border border-stone-200 text-stone-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 transition-colors"
+          >
+            <FileSpreadsheet size={16} /> Import Banyak
+          </Link>
+          <Link
+            href="/admin/products/new"
+            className="flex items-center gap-2 bg-stone-800 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-700 transition-colors"
+          >
+            <Plus size={16} /> Tambah Produk
+          </Link>
+        </div>
       </div>
 
       {/* Search */}
