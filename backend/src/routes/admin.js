@@ -64,12 +64,17 @@ function validateFileSizes(req, res) {
 
 // GET all products (admin — termasuk yang tidak aktif)
 router.get('/products', adminAuth, async (req, res) => {
-  const { search, category, page = 1, limit = 30 } = req.query;
+  const { search, category, status, stock, page = 1, limit = 30 } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
   let where = [], params = [];
 
   if (search) { where.push('(name LIKE ? OR sku LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
   if (category && category !== 'all') { where.push('category = ?'); params.push(category); }
+  if (status === 'active')   where.push('is_active = 1');
+  if (status === 'inactive') where.push('is_active = 0');
+  if (stock === 'out')   where.push('stock = 0');
+  if (stock === 'low')   where.push('stock > 0 AND stock <= 5');
+  if (stock === 'in')    where.push('stock > 5');
 
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const conn = await pool.getConnection();
