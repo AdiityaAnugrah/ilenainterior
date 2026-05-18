@@ -4,7 +4,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2, FileSpreadsheet, X } from 'lucide-react';
+
+const CATEGORIES = ['sofa','meja','kursi','rak','lampu','dekorasi','kasur','lemari','aksesori','lainnya'];
+type StatusFilter = 'all' | 'active' | 'inactive';
+type StockFilter  = 'all' | 'out' | 'low' | 'in';
 import toast from 'react-hot-toast';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
@@ -187,7 +191,13 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
+  const [category, setCategory] = useState<string>('all');
+  const [status,   setStatus]   = useState<StatusFilter>('all');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [total, setTotal]       = useState(0);
+
+  const activeFilterCount = (category !== 'all' ? 1 : 0) + (status !== 'all' ? 1 : 0) + (stockFilter !== 'all' ? 1 : 0);
+  const clearFilters = () => { setCategory('all'); setStatus('all'); setStockFilter('all'); };
   const [loadingProductIds, setLoadingProductIds] = useState<Set<number>>(new Set());
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -244,7 +254,12 @@ export default function AdminProductsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/api/admin/products', { params: { search, limit: 50 } });
+      const params: Record<string, string | number> = { limit: 50 };
+      if (search)              params.search   = search;
+      if (category !== 'all')  params.category = category;
+      if (status !== 'all')    params.status   = status;
+      if (stockFilter !== 'all') params.stock  = stockFilter;
+      const { data } = await api.get('/api/admin/products', { params });
       setProducts(data.data);
       setTotal(data.total);
     } finally { setLoading(false); }
@@ -253,7 +268,7 @@ export default function AdminProductsPage() {
   useEffect(() => {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, category, status, stockFilter]);
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Hapus produk "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
@@ -454,16 +469,82 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6 max-w-sm">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Cari nama atau SKU..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-stone-400 bg-white"
-        />
+      {/* Search + Filters */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-sm">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Cari nama atau SKU..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-stone-400 bg-white"
+          />
+        </div>
+
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          className="px-3 py-2.5 rounded-xl border border-stone-200 text-sm bg-white focus:outline-none focus:border-stone-400 capitalize cursor-pointer"
+        >
+          <option value="all">Semua kategori</option>
+          {CATEGORIES.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
+        </select>
+
+        <select
+          value={status}
+          onChange={e => setStatus(e.target.value as StatusFilter)}
+          className="px-3 py-2.5 rounded-xl border border-stone-200 text-sm bg-white focus:outline-none focus:border-stone-400 cursor-pointer"
+        >
+          <option value="all">Semua status</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </select>
+
+        <select
+          value={stockFilter}
+          onChange={e => setStockFilter(e.target.value as StockFilter)}
+          className="px-3 py-2.5 rounded-xl border border-stone-200 text-sm bg-white focus:outline-none focus:border-stone-400 cursor-pointer"
+        >
+          <option value="all">Semua stok</option>
+          <option value="out">Habis (0)</option>
+          <option value="low">Hampir habis (≤5)</option>
+          <option value="in">Ada stok (&gt;5)</option>
+        </select>
+
+        {activeFilterCount > 0 && (
+          <button
+            onClick={clearFilters}
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl transition-colors"
+          >
+            <X size={13} /> Hapus filter ({activeFilterCount})
+          </button>
+        )}
       </div>
+
+      {/* Active filter chips */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-xs">
+          <span className="text-stone-400">Filter aktif:</span>
+          {category !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-stone-100 text-stone-700 rounded-full capitalize">
+              {category}
+              <button onClick={() => setCategory('all')} className="hover:text-red-500"><X size={11} /></button>
+            </span>
+          )}
+          {status !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-stone-100 text-stone-700 rounded-full">
+              {status === 'active' ? 'Aktif' : 'Nonaktif'}
+              <button onClick={() => setStatus('all')} className="hover:text-red-500"><X size={11} /></button>
+            </span>
+          )}
+          {stockFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-stone-100 text-stone-700 rounded-full">
+              {stockFilter === 'out' ? 'Stok habis' : stockFilter === 'low' ? 'Hampir habis' : 'Ada stok'}
+              <button onClick={() => setStockFilter('all')} className="hover:text-red-500"><X size={11} /></button>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
