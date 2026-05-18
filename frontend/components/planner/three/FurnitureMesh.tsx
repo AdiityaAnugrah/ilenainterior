@@ -730,63 +730,21 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
     console.log(`[GLBModel] Simplified material properties (increased roughness, reduced metalness)`);
   }, [cloned, qualityReduced, itemId, url]);
 
-  // Bebaskan memory GPU saat komponen di-unmount
-  // Task 7.1: Added disposal safety flag to prevent premature disposal
-  // Task 7.2: Added disposal logging for debugging
-  // Requirements: 2.1, 2.5
+  // Mount tracking — disposal sengaja TIDAK dilakukan di sini.
+  //
+  // BUG SEBELUMNYA: cleanup memanggil `obj.geometry.dispose()` +
+  // `obj.material.dispose()` pada hasil `gltf.scene.clone(true)`. Tapi
+  // `clone(true)` HANYA clone Object3D nodes — geometry & material di-SHARE
+  // dengan cached GLTF di AssetLoader. Begitu 1 instance unmount → geometri
+  // GPU yang dipakai bersama hilang → instance lain (atau produk berikutnya
+  // yang reuse cache yang sama) jadi blank / gak ke-render.
+  //
+  // Disposal proper-nya dilakukan oleh AssetLoader saat cache evict (atau
+  // saat WebGL context di-release lewat cleanup di Canvas3D/CanvasWalk).
   useEffect(() => {
-    // Set mounted flag to true when component mounts
     isMountedRef.current = true;
-    
-    return () => {
-      // Mark component as unmounting
-      isMountedRef.current = false;
-      
-      // Task 7.2: Log disposal attempt with model URL and item ID
-      console.log(`[GLBModel] Disposal cleanup triggered for item ${itemId}`);
-      console.log(`[GLBModel] Model URL: ${url}`);
-      console.log(`[GLBModel] Mounted flag: ${isMountedRef.current}`);
-      console.log(`[GLBModel] Has cloned model: ${!!cloned}`);
-      
-      // Only dispose if component is truly unmounting (not during React concurrent rendering)
-      // Check the flag to prevent premature disposal during re-renders
-      if (cloned && !isMountedRef.current) {
-        console.log(`[GLBModel] Attempting disposal for item ${itemId}, URL: ${url}`);
-        
-        let meshCount = 0;
-        let geometryCount = 0;
-        let materialCount = 0;
-        
-        cloned.traverse((obj: THREE.Object3D) => {
-          if (obj instanceof THREE.Mesh) {
-            meshCount++;
-            if (obj.geometry) {
-              geometryCount++;
-              obj.geometry.dispose();
-            }
-            if (Array.isArray(obj.material)) {
-              materialCount += obj.material.length;
-              obj.material.forEach((m) => m.dispose());
-            } else if (obj.material) {
-              materialCount++;
-              obj.material.dispose();
-            }
-          }
-        });
-        
-        console.log(`[GLBModel] Disposal completed for item ${itemId}`);
-        console.log(`[GLBModel] Disposed ${meshCount} meshes, ${geometryCount} geometries, ${materialCount} materials`);
-        console.log(`[GLBModel] Model URL: ${url}`);
-      } else if (cloned && isMountedRef.current) {
-        console.log(`[GLBModel] Disposal skipped for item ${itemId} - component still mounted (safety flag)`);
-        console.log(`[GLBModel] Model URL: ${url}`);
-        console.log(`[GLBModel] This prevents premature disposal during React concurrent rendering`);
-      } else if (!cloned) {
-        console.log(`[GLBModel] Disposal skipped for item ${itemId} - no cloned model to dispose`);
-        console.log(`[GLBModel] Model URL: ${url}`);
-      }
-    };
-  }, [cloned, itemId, url]);
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // Show loading placeholder
   if (loading || !cloned) {
