@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { nukeStaleClientState } from '@/lib/nukeStaleClientState';
 
 export default function GlobalError({
   error,
@@ -13,15 +14,18 @@ export default function GlobalError({
     console.error('[app/global-error]', error);
 
     const msg = error?.message || String(error);
-    if (
-      /ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported)|Failed to find Server Action/i.test(
+    const isStaleClient =
+      /ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported|register a ServiceWorker)|Failed to find Server Action/i.test(
         msg
-      )
+      );
+
+    if (
+      isStaleClient &&
+      typeof window !== 'undefined' &&
+      !sessionStorage.getItem('nuke-attempted')
     ) {
-      if (typeof window !== 'undefined' && !sessionStorage.getItem('chunk-reload-attempted')) {
-        sessionStorage.setItem('chunk-reload-attempted', '1');
-        window.location.reload();
-      }
+      sessionStorage.setItem('nuke-attempted', '1');
+      void nukeStaleClientState();
     }
   }, [error]);
 
@@ -52,7 +56,7 @@ export default function GlobalError({
               Terjadi kesalahan
             </h1>
             <p style={{ fontSize: 14, color: '#57534e', margin: '0 0 16px' }}>
-              Aplikasi gagal dimuat. Coba muat ulang halaman.
+              Aplikasi gagal dimuat. Klik tombol di bawah untuk membersihkan & memuat ulang.
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -70,7 +74,7 @@ export default function GlobalError({
                 Coba lagi
               </button>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => nukeStaleClientState()}
                 style={{
                   padding: '8px 16px',
                   background: '#f5f5f4',
@@ -81,7 +85,7 @@ export default function GlobalError({
                   cursor: 'pointer',
                 }}
               >
-                Muat ulang
+                Bersihkan & muat ulang
               </button>
             </div>
           </div>

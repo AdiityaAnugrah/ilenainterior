@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { nukeStaleClientState } from '@/lib/nukeStaleClientState';
 
 export default function Error({
   error,
@@ -14,19 +15,20 @@ export default function Error({
 
     // Auto-recover dari error yang lumrah terjadi setelah deploy baru:
     //   - ChunkLoadError: chunk hash sudah berubah, tab lama 404 saat lazy import
-    //   - Failed to find Server Action: action ID berbeda antara HTML lama
-    //     dan server baru (lihat NEXT_SERVER_ACTIONS_ENCRYPTION_KEY)
-    // Reload sekali; dijaga sessionStorage supaya tidak loop.
+    //   - Failed to find Server Action: action ID berbeda antar build
+    //   - "Failed to register a ServiceWorker": SW lama yg corrupt
+    // Pattern-pattern ini selalu artinya browser punya state basi. Unregister
+    // semua SW + clear cache API + reload. Itu memutus loop "old SW serves
+    // stale HTML → stale HTML refs missing chunks → error → loop".
     const msg = error?.message || String(error);
-    if (
-      /ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported)|Failed to find Server Action/i.test(
+    const isStaleClient =
+      /ChunkLoadError|Loading chunk|Failed to (?:load|fetch dynamically imported|register a ServiceWorker)|Failed to find Server Action/i.test(
         msg
-      )
-    ) {
-      if (!sessionStorage.getItem('chunk-reload-attempted')) {
-        sessionStorage.setItem('chunk-reload-attempted', '1');
-        window.location.reload();
-      }
+      );
+
+    if (isStaleClient && !sessionStorage.getItem('nuke-attempted')) {
+      sessionStorage.setItem('nuke-attempted', '1');
+      void nukeStaleClientState();
     }
   }, [error]);
 
@@ -57,10 +59,10 @@ export default function Error({
             Coba lagi
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => nukeStaleClientState()}
             className="px-4 py-2 bg-stone-100 text-stone-800 text-sm font-medium rounded-md hover:bg-stone-200 transition-colors"
           >
-            Muat ulang halaman
+            Bersihkan & muat ulang
           </button>
           <a
             href="/"

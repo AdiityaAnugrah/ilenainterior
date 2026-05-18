@@ -1,48 +1,66 @@
-// Kill-switch Service Worker
-// Replaces the previous caching service worker. Whenever an old client
-// installs/activates this version, it deletes every cache and
-// unregisters itself, then forces all open tabs to reload with a fresh
-// network fetch. This is needed because the previous SW was caching
-// stale JS chunks and intercepting the app's API URLs.
+// Kill-switch Service Worker v2
 //
-// Version is bumped on every change so browsers detect the byte-diff
-// and run the update path.
-const KILL_SWITCH_VERSION = 'kill-switch-2026-05-16';
+// Tugasnya 1 hal saja: matikan diri sendiri dan semua cache, lalu paksa
+// semua tab nge-reload dari network. Tidak pernah meng-intercept fetch.
+//
+// Browser akan fetch /sw.js secara periodik untuk update check. Begitu
+// browser detect byte-diff dari versi tersimpan, dia install yang baru.
+// Versi di-bump tiap perubahan supaya browser yakin ini file beda.
+const KILL_SWITCH_VERSION = 'kill-switch-2026-05-18-v2';
 
 self.addEventListener('install', (event) => {
-  // Take over immediately - do not wait for old SW to release control.
+  // Skip waiting → langsung pindah ke fase activate tanpa nunggu
+  // SW lama melepas kontrol. Penting supaya browser yg stuck dengan SW
+  // basi cepat ke-bersihin.
   event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     try {
-      // 1. Delete every cache this origin owns.
+      // 1. Hapus semua cache milik origin ini.
       const cacheNames = await caches.keys();
       await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    } catch (err) {
+      // ignore
+    }
 
-      // 2. Unregister self.
-      await self.registration.unregister();
+    try {
+      // 2. Ambil semua client (tab) yg masih hidup SEBELUM unregister,
+      //    supaya bisa di-reload setelah self-unregister selesai.
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
 
-      // 3. Force every open client to reload from the network.
-      const clients = await self.clients.matchAll({ type: 'window' });
+      // 3. Unregister diri sendiri.
+      try { await self.registration.unregister(); } catch (e) { /* ignore */ }
+
+      // 4. Reload tiap client supaya HTML & asset di-fetch ulang dari
+      //    network (bukan dari SW yg barusan dimatikan).
       for (const client of clients) {
-        // navigate() bypasses any cached HTML/JS.
         try {
           await client.navigate(client.url);
         } catch (e) {
-          // Some clients (cross-origin) cannot be navigated; ignore.
+          // beberapa client tidak bisa di-navigate (cross-origin) — skip
         }
       }
     } catch (err) {
-      // Swallow errors - we are best-effort cleanup.
-      console.error('[KillSwitchSW] cleanup failed:', err);
+      // ignore
     }
   })());
 });
 
-// Pass through every request untouched - never intercept.
+// Pass-through: jangan pernah intercept request. Browser akan handle
+// fetch secara default seperti tanpa SW.
 self.addEventListener('fetch', () => {
-  // Intentionally do not call event.respondWith() - the browser
-  // performs the default network fetch.
+  // intentionally empty
 });
+
+// Beberapa SW lama mengirim `SKIP_WAITING` message untuk activate paksa.
+// Kita honor request itu supaya transisi mulus.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Reference KILL_SWITCH_VERSION supaya minifier tidak buang konstanta.
+void KILL_SWITCH_VERSION;
