@@ -232,4 +232,226 @@ router.post('/products/import/preview',
   },
 );
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BULK UPDATE — match existing products by SKU, update only non-empty cells
+// ═══════════════════════════════════════════════════════════════════════════
+
+const UPDATE_COLUMNS = [
+  { key: 'sku',         header: 'SKU',          width: 18, required: true,  type: 'string' },
+  { key: 'name',        header: 'Nama Produk',  width: 40, required: false, type: 'string' },
+  { key: 'category',    header: 'Kategori',     width: 14, required: false, type: 'enum', enum: CATEGORIES },
+  { key: 'price',       header: 'Harga (Rp)',   width: 14, required: false, type: 'number', min: 0 },
+  { key: 'stock',       header: 'Stok',         width: 10, required: false, type: 'number', min: 0 },
+  { key: 'width',       header: 'Lebar (cm)',   width: 12, required: false, type: 'number', min: 0 },
+  { key: 'depth',       header: 'Kedalaman (cm)', width: 14, required: false, type: 'number', min: 0 },
+  { key: 'height',      header: 'Tinggi (cm)',  width: 12, required: false, type: 'number', min: 0 },
+  { key: 'description', header: 'Deskripsi',    width: 50, required: false, type: 'string' },
+  { key: 'tags',        header: 'Tags (pisah koma)', width: 30, required: false, type: 'string' },
+  { key: 'is_active',   header: 'Aktif (1/0)',  width: 10, required: false, type: 'boolean' },
+];
+
+// ─── UPDATE TEMPLATE ────────────────────────────────────────────────────────
+router.get('/products/import/update-template', adminAuth, async (req, res) => {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'ILENA Admin';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('Update Produk', { views: [{ state: 'frozen', ySplit: 1 }] });
+  ws.columns = UPDATE_COLUMNS.map(c => ({ header: c.header, key: c.key, width: c.width }));
+
+  const headerRow = ws.getRow(1);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF44403C' } };
+  headerRow.alignment = { vertical: 'middle', horizontal: 'left' };
+  headerRow.height = 24;
+  UPDATE_COLUMNS.forEach((c, i) => {
+    if (c.required) headerRow.getCell(i + 1).value = `${c.header} *`;
+  });
+
+  // Optional: include existing products as starter rows? Saran: kosongkan,
+  // user export sendiri yg mau di-update lewat search/filter.
+
+  // Dropdown validations
+  ws.dataValidations.add('C2:C500', {
+    type: 'list', allowBlank: true,
+    formulae: [`"${CATEGORIES.join(',')}"`],
+  });
+  ws.dataValidations.add('K2:K500', {
+    type: 'list', allowBlank: true,
+    formulae: ['"1,0"'],
+  });
+
+  // Sheet panduan
+  const help = wb.addWorksheet('Panduan');
+  help.columns = [{ width: 25 }, { width: 85 }];
+  const helpRows = [
+    ['Field', 'Aturan untuk UPDATE'],
+    ['SKU', 'WAJIB. Dipakai untuk match ke produk yang udah ada. SKU yang gak ada di DB → di-skip.'],
+    ['Field lainnya', 'OPSIONAL. Kosongkan = tidak diubah. Isi = update ke nilai baru.'],
+    ['Kategori', `Kalau diisi: pilih dari dropdown (${CATEGORIES.join(', ')})`],
+    ['Harga', 'Kalau diisi: angka tanpa titik/koma. Contoh: 3000000'],
+    ['Aktif', 'Kalau diisi: 1 = aktif, 0 = nonaktif'],
+    ['', ''],
+    ['File foto/GLB', 'Letakkan file dengan nama = SKU (misal SOF-001.jpg) → foto/GLB lama akan DIGANTI.'],
+    ['File tidak ada', 'Aman. Foto/GLB lama tetap dipertahankan.'],
+    ['', ''],
+    ['TIPS', 'Untuk update massal harga: kosongkan semua kolom kecuali SKU dan Harga.'],
+  ];
+  helpRows.forEach((row, i) => {
+    const r = help.addRow(row);
+    if (i === 0) {
+      r.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      r.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF44403C' } };
+    }
+  });
+
+  const buf = await wb.xlsx.writeBuffer();
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="template_update_produk_ilena.xlsx"');
+  res.send(Buffer.from(buf));
+});
+
+// ─── UPDATE PREVIEW ─────────────────────────────────────────────────────────
+function validateUpdateRow(raw, rowNumber, seenSkus) {
+  const errors = [];
+  const cleaned = {};
+
+  for (const col of UPDATE_COLUMNS) {
+    let v = raw[col.key];
+    const isEmpty = v === undefined || v === null || v === '';
+
+    if (isEmpty) {
+      if (col.required) { errors.push(`${col.header} wajib diisi`); continue; }
+      cleaned[col.key] = undefined; // don't touch
+      continue;
+    }
+    if (typeof v === 'object' && v.text) v = v.text;
+    v = String(v).trim();
+
+    if (col.type === 'number') {
+      const n = parseFloat(String(v).replace(/[^\d.-]/g, ''));
+      if (isNaN(n)) { errors.push(`${col.header} harus angka`); continue; }
+      if (col.min !== undefined && n < col.min) { errors.push(`${col.header} min ${col.min}`); continue; }
+      cleaned[col.key] = n;
+    } else if (col.type === 'boolean') {
+      cleaned[col.key] = (v === '0' || v === 'false' || v === 'FALSE') ? 0 : 1;
+    } else if (col.type === 'enum') {
+      const lower = v.toLowerCase();
+      if (!col.enum.includes(lower)) {
+        errors.push(`${col.header} harus salah satu: ${col.enum.join(', ')}`);
+        continue;
+      }
+      cleaned[col.key] = lower;
+    } else {
+      cleaned[col.key] = v;
+    }
+  }
+
+  if (cleaned.sku) {
+    if (seenSkus.has(cleaned.sku)) errors.push(`SKU duplikat di file (juga di baris ${seenSkus.get(cleaned.sku)})`);
+    else seenSkus.set(cleaned.sku, rowNumber);
+  }
+
+  return { row: rowNumber, data: cleaned, errors };
+}
+
+router.post('/products/import/update-preview',
+  adminAuth,
+  memUpload.single('xlsx'),
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: 'File xlsx wajib di-upload' });
+
+    let wb;
+    try {
+      wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(req.file.buffer);
+    } catch {
+      return res.status(400).json({ message: 'File xlsx rusak atau format salah' });
+    }
+
+    const ws = wb.getWorksheet('Update Produk') || wb.getWorksheet('Produk') || wb.worksheets[0];
+    if (!ws) return res.status(400).json({ message: 'Sheet tidak ditemukan' });
+
+    const headerRow = ws.getRow(1);
+    const colMap = {};
+    headerRow.eachCell((cell, colNum) => {
+      const text = String(cell.value || '').replace(/\*/g, '').trim();
+      const col = UPDATE_COLUMNS.find(c => c.header.toLowerCase() === text.toLowerCase());
+      if (col) colMap[colNum] = col.key;
+    });
+
+    if (Object.keys(colMap).length === 0) {
+      return res.status(400).json({ message: 'Header kolom tidak dikenali. Pakai template Update.' });
+    }
+
+    const seenSkus = new Map();
+    const rows = [];
+    ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const raw = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNum) => {
+        const key = colMap[colNum];
+        if (key) raw[key] = cell.value;
+      });
+      if (Object.values(raw).every(v => v === null || v === undefined || v === '')) return;
+      rows.push(validateUpdateRow(raw, rowNumber, seenSkus));
+    });
+
+    if (rows.length === 0) {
+      return res.status(400).json({ message: 'File tidak berisi data produk' });
+    }
+
+    // Fetch existing products + check SKU exists in DB
+    const skus = rows.map(r => r.data.sku).filter(Boolean);
+    const existingMap = new Map();
+    if (skus.length > 0) {
+      const conn = await pool.getConnection();
+      try {
+        const placeholders = skus.map(() => '?').join(',');
+        const [existing] = await conn.query(
+          `SELECT id, sku, name, category, price, stock, dimensions, description, tags, is_active, thumbnail, model_3d
+           FROM products WHERE sku IN (${placeholders})`,
+          skus,
+        );
+        existing.forEach(p => {
+          const dim = typeof p.dimensions === 'string' ? JSON.parse(p.dimensions || '{}') : (p.dimensions || {});
+          const tagsArr = typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : (p.tags || []);
+          existingMap.set(p.sku, {
+            id: p.id, sku: p.sku, name: p.name, category: p.category,
+            price: Number(p.price), stock: p.stock,
+            width: dim.width || 0, depth: dim.depth || 0, height: dim.height || 0,
+            description: p.description || '', tags: Array.isArray(tagsArr) ? tagsArr.join(', ') : '',
+            is_active: p.is_active,
+            thumbnail: p.thumbnail, model_3d: p.model_3d,
+          });
+        });
+      } finally {
+        conn.release();
+      }
+    }
+
+    // Annotate each row with current values + changedFields
+    const out = rows.map(r => {
+      const current = existingMap.get(r.data.sku);
+      if (!current) {
+        return { ...r, current: null, changedFields: [], errors: [...r.errors, `SKU "${r.data.sku}" tidak ditemukan di database`] };
+      }
+      const changedFields = [];
+      for (const col of UPDATE_COLUMNS) {
+        if (col.key === 'sku') continue;
+        const newVal = r.data[col.key];
+        if (newVal === undefined) continue;
+        const oldVal = current[col.key];
+        if (String(newVal) !== String(oldVal)) changedFields.push(col.key);
+      }
+      return { ...r, current, changedFields };
+    });
+
+    const okCount  = out.filter(r => r.errors.length === 0).length;
+    const errCount = out.length - okCount;
+
+    res.json({ totalRows: out.length, okCount, errCount, rows: out });
+  },
+);
+
 module.exports = router;

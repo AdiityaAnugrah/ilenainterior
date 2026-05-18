@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2, FileSpreadsheet, X } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2, FileSpreadsheet, X, Edit3 } from 'lucide-react';
 
 const CATEGORIES = ['sofa','meja','kursi','rak','lampu','dekorasi','kasur','lemari','aksesori','lainnya'];
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -454,6 +454,12 @@ export default function AdminProductsPage() {
           <p className="text-stone-500 text-sm mt-1">{total} produk total</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/products/bulk-update"
+            className="flex items-center gap-2 bg-white border border-stone-200 text-stone-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 transition-colors"
+          >
+            <Edit3 size={16} /> Update Massal
+          </Link>
           <Link
             href="/admin/products/import"
             className="flex items-center gap-2 bg-white border border-stone-200 text-stone-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-stone-50 transition-colors"
