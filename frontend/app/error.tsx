@@ -5,6 +5,9 @@ import { nukeStaleClientState } from '@/lib/nukeStaleClientState';
 
 const MAX_AUTO_ATTEMPTS = 3;
 const RELOAD_DELAY_MS = 1200;
+// Rate-limit nuke per error type (jangan double-fire rapid, tapi jangan
+// blokir nuke selamanya kayak flag boolean sebelumnya).
+const NUKE_COOLDOWN_MS = 5000;
 
 export default function Error({
   error,
@@ -25,12 +28,19 @@ export default function Error({
         msg
       );
 
-    // Stale client: full nuke + reload sekali. Setelah itu reload tidak lagi
-    // pakai nuke (biar gak hapus state berulang).
-    if (isStaleClient && !sessionStorage.getItem('nuke-attempted')) {
-      sessionStorage.setItem('nuke-attempted', '1');
-      void nukeStaleClientState();
-      return;
+    // Stale client (ChunkLoadError dkk): WAJIB nuke — chunk udah gak ada di
+    // server, plain reload gak akan fix. Sebelumnya pakai flag boolean
+    // sessionStorage yang gak pernah dibersihin → nuke kedua gak jalan dan
+    // user stuck di error. Sekarang pakai timestamp + cooldown 5s biar
+    // tetap aman dari rapid double-fire tapi gak blokir nuke selamanya.
+    if (isStaleClient) {
+      const lastNuke = parseInt(sessionStorage.getItem('last-nuke-ts') || '0', 10);
+      if (Date.now() - lastNuke > NUKE_COOLDOWN_MS) {
+        sessionStorage.setItem('last-nuke-ts', String(Date.now()));
+        void nukeStaleClientState();
+        return;
+      }
+      // Dalam cooldown → fall through ke auto-reload generic.
     }
 
     // Counter recovery attempt — per error digest agar reset terhitung kalau

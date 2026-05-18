@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { ServiceWorkerManager } from '@/app/register-sw';
+import { nukeStaleClientState } from '@/lib/nukeStaleClientState';
+
+const NUKE_COOLDOWN_MS = 5000;
 
 /**
  * Service Worker Provider Component
@@ -22,12 +25,14 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
       if (!/ChunkLoadError|Loading chunk|Failed to load chunk/i.test(msg)) {
         return;
       }
-      if (sessionStorage.getItem('chunk-reload-attempted')) {
-        // Already tried reloading once - don't loop.
-        return;
-      }
-      sessionStorage.setItem('chunk-reload-attempted', '1');
-      window.location.reload();
+      // Pakai cooldown timestamp (bukan flag boolean) supaya nuke berikutnya
+      // setelah cooldown lewat tetap bisa jalan. Plain reload sebelumnya
+      // gak fix kalau HTML masih reference chunk hash yang udah hilang —
+      // wajib nuke (clear caches + unregister SW + reload bypass cache).
+      const lastNuke = parseInt(sessionStorage.getItem('last-nuke-ts') || '0', 10);
+      if (Date.now() - lastNuke < NUKE_COOLDOWN_MS) return;
+      sessionStorage.setItem('last-nuke-ts', String(Date.now()));
+      void nukeStaleClientState();
     };
 
     const errorHandler = (e: ErrorEvent) => onChunkError(e.message || '');
@@ -41,16 +46,9 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
     window.addEventListener('error', errorHandler);
     window.addEventListener('unhandledrejection', rejectionHandler);
 
-    // If the page loaded cleanly, clear the guard so a future
-    // ChunkLoadError can trigger another reload.
-    const clearGuard = setTimeout(() => {
-      sessionStorage.removeItem('chunk-reload-attempted');
-    }, 10000);
-
     return () => {
       window.removeEventListener('error', errorHandler);
       window.removeEventListener('unhandledrejection', rejectionHandler);
-      clearTimeout(clearGuard);
     };
   }, []);
 

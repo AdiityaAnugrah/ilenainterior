@@ -5,6 +5,7 @@ import { nukeStaleClientState } from '@/lib/nukeStaleClientState';
 
 const MAX_AUTO_ATTEMPTS = 3;
 const RELOAD_DELAY_MS = 1500;
+const NUKE_COOLDOWN_MS = 5000;
 
 export default function GlobalError({
   error,
@@ -24,17 +25,17 @@ export default function GlobalError({
         msg
       );
 
-    if (
-      isStaleClient &&
-      typeof window !== 'undefined' &&
-      !sessionStorage.getItem('nuke-attempted')
-    ) {
-      sessionStorage.setItem('nuke-attempted', '1');
-      void nukeStaleClientState();
-      return;
-    }
-
     if (typeof window === 'undefined') return;
+
+    // Stale client → nuke (lihat catatan di error.tsx soal cooldown vs flag).
+    if (isStaleClient) {
+      const lastNuke = parseInt(sessionStorage.getItem('last-nuke-ts') || '0', 10);
+      if (Date.now() - lastNuke > NUKE_COOLDOWN_MS) {
+        sessionStorage.setItem('last-nuke-ts', String(Date.now()));
+        void nukeStaleClientState();
+        return;
+      }
+    }
 
     const key = `global-auto-recover-${error?.digest || 'unknown'}`;
     const current = parseInt(sessionStorage.getItem(key) || '0', 10);
