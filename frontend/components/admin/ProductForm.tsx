@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Upload, Box, X, Plus, Trash2, AlertCircle, Loader2, Sparkles } from 'lucide-react';
@@ -175,6 +175,23 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
   const [glbStats, setGlbStats] = useState<OptimizeStats | null>(null);
 
   const [uploadPct, setUploadPct] = useState(0);
+
+  // Unit toggle for dimension inputs — internal value always stored in cm
+  const [dimUnit, setDimUnit] = useState<'cm' | 'mm'>('cm');
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem('ilena_dim_unit');
+    if (saved === 'mm' || saved === 'cm') setDimUnit(saved);
+  }, []);
+  const changeDimUnit = (u: 'cm' | 'mm') => {
+    setDimUnit(u);
+    if (typeof window !== 'undefined') localStorage.setItem('ilena_dim_unit', u);
+  };
+  const dispDim   = (cm: number) => dimUnit === 'mm' ? cm * 10 : cm;
+  const parseDim  = (raw: string) => {
+    const n = parseFloat(raw) || 0;
+    return dimUnit === 'mm' ? n / 10 : n;  // always store as cm
+  };
 
   const handleThumbnail = async (f: File | null) => {
     if (!f) {
@@ -409,19 +426,40 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
 
           {/* Dimensions */}
           <div className="bg-white rounded-2xl border border-stone-100 p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-stone-700">Dimensi Produk</h3>
-              <span className="text-xs text-stone-400">(dalam centimeter — digunakan untuk penempatan di 3D)</span>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-stone-700">Dimensi Produk</h3>
+                <span className="text-xs text-stone-400">(untuk penempatan di 3D)</span>
+              </div>
+              <div className="inline-flex rounded-lg border border-stone-200 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => changeDimUnit('cm')}
+                  className={`px-3 py-1.5 font-medium transition-colors ${dimUnit === 'cm' ? 'bg-stone-800 text-white' : 'bg-white text-stone-500 hover:bg-stone-50'}`}
+                >
+                  cm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeDimUnit('mm')}
+                  className={`px-3 py-1.5 font-medium transition-colors ${dimUnit === 'mm' ? 'bg-stone-800 text-white' : 'bg-white text-stone-500 hover:bg-stone-50'}`}
+                >
+                  mm
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <Input label="Lebar (cm)" type="number" unit="cm" value={form.width} onChange={e => set('width', parseFloat(e.target.value) || 0)} placeholder="180" />
-              <Input label="Kedalaman (cm)" type="number" unit="cm" value={form.depth} onChange={e => set('depth', parseFloat(e.target.value) || 0)} placeholder="85" />
-              <Input label="Tinggi (cm)" type="number" unit="cm" value={form.height} onChange={e => set('height', parseFloat(e.target.value) || 0)} placeholder="80" />
+              <Input label={`Lebar (${dimUnit})`}      type="number" unit={dimUnit} value={dispDim(form.width)}  onChange={e => set('width',  parseDim(e.target.value))} placeholder={dimUnit === 'mm' ? '1800' : '180'} />
+              <Input label={`Kedalaman (${dimUnit})`} type="number" unit={dimUnit} value={dispDim(form.depth)}  onChange={e => set('depth',  parseDim(e.target.value))} placeholder={dimUnit === 'mm' ? '850'  : '85'} />
+              <Input label={`Tinggi (${dimUnit})`}    type="number" unit={dimUnit} value={dispDim(form.height)} onChange={e => set('height', parseDim(e.target.value))} placeholder={dimUnit === 'mm' ? '800'  : '80'} />
             </div>
             {(form.width > 0 || form.depth > 0) && (
               <div className="bg-stone-50 rounded-lg px-3 py-2 text-xs text-stone-500">
                 Luas lantai: <span className="font-medium">{((form.width/100) * (form.depth/100)).toFixed(2)} m²</span>
                 {' · '}Volume: <span className="font-medium">{((form.width/100) * (form.depth/100) * (form.height/100)).toFixed(2)} m³</span>
+                {dimUnit === 'mm' && (
+                  <span className="ml-2 text-stone-400">(data tersimpan dalam cm: {form.width} × {form.depth} × {form.height})</span>
+                )}
               </div>
             )}
           </div>
