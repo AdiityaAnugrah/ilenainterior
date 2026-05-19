@@ -77,17 +77,21 @@ export interface BaseIntensities {
  */
 export const BASE_INTENSITIES: BaseIntensities = {
   day: {
-    ledStrip: 0.3,    // Requirement 1.5: 0.2-0.4 range
-    coveLight: 0.2,   // Requirement 2.6: 0.15-0.3 range
-    backlight: 0.15,  // Requirement 3.5: 0.1-0.25 range
-    ambient: 0.4,     // Requirement 4.3: 0.3-0.5 range
+    // Siang: lampu indoor harusnya minimal (matahari dominan dari outdoor).
+    // Sebelumnya total 1.05 — bikin scene over-bright digabung dgn outdoor
+    // ambient (0.4) + directional (0.8) + Lights.tsx ambient (0.3).
+    // Sekarang total ~0.35 supaya outdoor jadi sumber dominan.
+    ledStrip: 0.10,
+    coveLight: 0.07,
+    backlight: 0.05,
+    ambient: 0.13,
   },
   night: {
-    ledStrip: 0.7,    // Requirement 1.6: 0.6-1.0 range (adjusted for 4.8)
-    coveLight: 0.55,  // Requirement 2.7: 0.5-0.8 range (adjusted for 4.8)
-    backlight: 0.35,  // Requirement 3.6: 0.3-0.6 range (adjusted for 4.8)
-    ambient: 0.4,     // Requirement 4.4: 0.4-0.7 range (adjusted for 4.8)
-    // Total: 2.0 (meets Requirement 4.8: combined intensity SHALL not exceed 2.0)
+    // Malam: lampu indoor jadi sumber utama. Total ~2.0 cocok.
+    ledStrip: 0.7,
+    coveLight: 0.55,
+    backlight: 0.35,
+    ambient: 0.4,
   },
 };
 

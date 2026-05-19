@@ -117,10 +117,13 @@ const DEFAULT_MULTIPLIERS = {
  * Requirements 9.1, 9.2, 9.3, 9.4
  */
 const DEFAULT_LIGHTING = {
-  dayAmbient: 0.4,
-  nightAmbient: 0.1,
-  dayDirectional: 0.8,
-  nightDirectional: 0.2,
+  // Siang sebelumnya 0.4 ambient + 0.8 directional terlalu kuat saat
+  // digabung dgn indoor ambient (Lights.tsx) + CeilingLightingSystem.
+  // Sekarang diset jadi sumber dominan tapi tidak over-bright.
+  dayAmbient: 0.25,
+  nightAmbient: 0.08,
+  dayDirectional: 0.6,
+  nightDirectional: 0.15,
 };
 
 /**
