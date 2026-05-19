@@ -35,12 +35,39 @@ import * as THREE from 'three';
  */
 function LODUpdater() {
   const { scene, camera } = useThree();
-  
+
   useFrame(() => {
     // Update all LOD objects in the scene based on camera position
     updateSceneLOD(scene, camera);
   });
-  
+
+  return null;
+}
+
+/**
+ * GLContextDisposer
+ *
+ * Hard-release WebGL context saat Canvas spesifik ini unmount.
+ * Browser limit ~16 active WebGL contexts; tanpa cleanup, remount via
+ * canvasKey (saat quality change) atau navigasi step bikin context pile up
+ * → "Too many active WebGL contexts" → context oldest hilang → model lost.
+ *
+ * Pakai child di dalam <Canvas> supaya gl instance ke-capture per-canvas
+ * (gak ada race condition dengan ref di parent).
+ */
+function GLContextDisposer() {
+  const { gl } = useThree();
+  useEffect(() => {
+    return () => {
+      try {
+        const ext = gl.getContext().getExtension('WEBGL_lose_context');
+        ext?.loseContext();
+        gl.dispose();
+      } catch (err) {
+        console.warn('[Canvas3D] GL cleanup error:', err);
+      }
+    };
+  }, [gl]);
   return null;
 }
 
@@ -325,24 +352,8 @@ export default function Canvas3D() {
   const frustumCullerRef = useRef<FrustumCuller | null>(null);
   const qualityManagerRef = useRef<QualityManager | null>(null);
   const rendererOptimizerRef = useRef<RendererOptimizer | null>(null);
-  const glRef = useRef<THREE.WebGLRenderer | null>(null);
 
-  // Hard-release WebGL context on unmount.
-  // Browser limits ~16 active contexts; without explicit cleanup, switching
-  // between viewMode (2d/3d/walk) or planner steps leaks contexts → eventually
-  // "Too many active WebGL contexts" → oldest context killed → model hilang.
-  useEffect(() => () => {
-    const gl = glRef.current;
-    if (!gl) return;
-    try {
-      gl.dispose();
-      const ext = gl.getContext().getExtension('WEBGL_lose_context');
-      ext?.loseContext();
-    } catch (err) {
-      console.warn('[Canvas3D] cleanup error:', err);
-    }
-    glRef.current = null;
-  }, []);
+  // Cleanup WebGL context ditangani <GLContextDisposer /> di dalam <Canvas>.
   const [transformMode, setTransformMode] = useState<TransformMode>('translate');
   const [canvasKey, setCanvasKey] = useState(0); // Key to force Canvas remount when quality changes
   const [showLowEndNotification, setShowLowEndNotification] = useState(false);
@@ -680,7 +691,6 @@ export default function Canvas3D() {
         }}
         style={{ background: isNight ? '#0D1020' : '#E8E5E0' }}
         onCreated={(state) => {
-          glRef.current = state.gl;
           console.log('[Canvas3D] Canvas created successfully', {
             gl: state.gl.capabilities,
             camera: state.camera.position,
@@ -699,6 +709,7 @@ export default function Canvas3D() {
           }, 500);
         }}
       >
+        <GLContextDisposer />
         <Suspense fallback={
           <mesh>
             <boxGeometry args={[1, 1, 1]} />

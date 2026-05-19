@@ -24,12 +24,29 @@ import * as THREE from 'three';
  */
 function LODUpdater() {
   const { scene, camera } = useThree();
-  
+
   useFrame(() => {
     // Update all LOD objects in the scene based on camera position
     updateSceneLOD(scene, camera);
   });
-  
+
+  return null;
+}
+
+// Hard-release WebGL context saat Canvas unmount (gl per-canvas, gak race).
+function GLContextDisposer() {
+  const { gl } = useThree();
+  useEffect(() => {
+    return () => {
+      try {
+        const ext = gl.getContext().getExtension('WEBGL_lose_context');
+        ext?.loseContext();
+        gl.dispose();
+      } catch (err) {
+        console.warn('[CanvasWalk] GL cleanup error:', err);
+      }
+    };
+  }, [gl]);
   return null;
 }
 
@@ -75,23 +92,9 @@ export default function CanvasWalk() {
   const [camPos, setCamPos]     = useState({ x: 0, z: 0 });
   const [camAngle, setCamAngle] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const glRef = useRef<THREE.WebGLRenderer | null>(null);
   const { timeOfDay, setTimeOfDay } = useEditorStore();
   const isNight = timeOfDay === 'night';
-
-  // Hard-release WebGL context on unmount (lihat catatan di Canvas3D)
-  useEffect(() => () => {
-    const gl = glRef.current;
-    if (!gl) return;
-    try {
-      gl.dispose();
-      const ext = gl.getContext().getExtension('WEBGL_lose_context');
-      ext?.loseContext();
-    } catch (err) {
-      console.warn('[CanvasWalk] cleanup error:', err);
-    }
-    glRef.current = null;
-  }, []);
+  // Cleanup WebGL context dipindah ke <GLContextDisposer /> di dalam <Canvas>.
 
   const handleEnter = useCallback(() => {
     setActive(true);
@@ -127,8 +130,8 @@ export default function CanvasWalk() {
         camera={{ fov: 75, near: 0.05, far: 100 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
         style={{ background: isNight ? '#0D1020' : '#E8E5E0' }}
-        onCreated={(state) => { glRef.current = state.gl; }}
       >
+        <GLContextDisposer />
         <Suspense fallback={null}>
           <WalkScene active={active} onExit={handleExit} onCamUpdate={handleCamUpdate} />
         </Suspense>
