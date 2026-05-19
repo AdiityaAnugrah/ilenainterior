@@ -7,8 +7,14 @@ import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ilenainterior.com';
+
 export const metadata: Metadata = {
-  title: 'ILENA INTERIOR | Rancang Ruanganmu',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'ILENA INTERIOR | Rancang Ruanganmu',
+    template: '%s | ILENA INTERIOR',
+  },
   description: 'Desain interior impianmu secara virtual. Atur furniture, lihat dalam 3D, dan langsung beli.',
 };
 
