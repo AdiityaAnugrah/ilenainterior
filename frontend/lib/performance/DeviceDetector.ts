@@ -205,22 +205,28 @@ export class DeviceDetector {
       };
     }
 
-    const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info');
-    
+    const webgl = gl as WebGLRenderingContext;
+    const debugInfo = webgl.getExtension('WEBGL_debug_renderer_info');
+
+    let result: DeviceInfo['gpu'];
     if (debugInfo) {
-      const vendor = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || 'Unknown';
-      const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'Unknown';
-      
-      return {
-        vendor: String(vendor),
-        renderer: String(renderer),
+      result = {
+        vendor: String(webgl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || 'Unknown'),
+        renderer: String(webgl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'Unknown'),
+      };
+    } else {
+      result = {
+        vendor: String(webgl.getParameter(webgl.VENDOR) || 'Unknown'),
+        renderer: String(webgl.getParameter(webgl.RENDERER) || 'Unknown'),
       };
     }
 
-    return {
-      vendor: String((gl as WebGLRenderingContext).getParameter((gl as WebGLRenderingContext).VENDOR) || 'Unknown'),
-      renderer: String((gl as WebGLRenderingContext).getParameter((gl as WebGLRenderingContext).RENDERER) || 'Unknown'),
-    };
+    // Release context setelah detection — kalau gak, slot WebGL bocor
+    try {
+      webgl.getExtension('WEBGL_lose_context')?.loseContext();
+    } catch {}
+
+    return result;
   }
 
   /**

@@ -23,6 +23,30 @@ const DEFAULT_CONFIG: RendererOptimizerConfig = {
   preferWebGL2: true,
 };
 
+// Module-level cache. Detection bikin canvas+WebGL context — cuma boleh sekali
+// per session, kalau gak browser kehabisan slot (~16) dan context lama hilang.
+let cachedIsWebGL2: boolean | null = null;
+
+function detectWebGL2Once(): boolean {
+  if (cachedIsWebGL2 !== null) return cachedIsWebGL2;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2');
+    cachedIsWebGL2 = gl !== null;
+    // Release context dan canvas reference setelah detection
+    if (gl) {
+      try {
+        const ext = (gl as WebGL2RenderingContext).getExtension('WEBGL_lose_context');
+        ext?.loseContext();
+      } catch {}
+    }
+    return cachedIsWebGL2;
+  } catch {
+    cachedIsWebGL2 = false;
+    return false;
+  }
+}
+
 export class RendererOptimizer {
   private config: RendererOptimizerConfig;
 
@@ -235,13 +259,7 @@ export class RendererOptimizer {
    * @returns true if WebGL2 is supported
    */
   isWebGL2Available(): boolean {
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl2');
-      return gl !== null;
-    } catch (e) {
-      return false;
-    }
+    return detectWebGL2Once();
   }
 
   /**

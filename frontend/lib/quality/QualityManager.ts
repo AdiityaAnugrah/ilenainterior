@@ -226,6 +226,12 @@ export class QualityManager {
    * Detect device capabilities
    */
   detectDeviceCapabilities(): DeviceCapabilities {
+    // Hasil sudah di-cache? Pakai itu — bikin context baru tiap call bocor
+    // ~16 slot WebGL browser dengan cepat.
+    if (this.deviceCapabilities) {
+      return this.deviceCapabilities;
+    }
+
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
 
@@ -264,6 +270,12 @@ export class QualityManager {
 
     // WebGL extensions
     const extensions = gl.getSupportedExtensions() || [];
+
+    // Release context detection setelah selesai pakai — browser limit ~16
+    try {
+      const ext = gl.getExtension('WEBGL_lose_context');
+      ext?.loseContext();
+    } catch {}
 
     this.deviceCapabilities = {
       gpu: {
