@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { Plus, Search, Eye, Download, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Pagination from '@/components/admin/Pagination';
 
 interface Order {
   id: number;
@@ -89,6 +90,11 @@ export default function AdminOrdersPage() {
     return () => clearTimeout(t);
   }, [search, statusFilter, dateFrom, dateTo, page]);
 
+  // Reset ke halaman 1 saat filter/search berubah
+  useEffect(() => {
+    setPage(1);
+  }, [search, dateFrom, dateTo]);
+
   const handleExport = async () => {
     try {
       const response = await api.get('/api/admin/orders/export', {
@@ -120,8 +126,6 @@ export default function AdminOrdersPage() {
       minute: '2-digit',
     });
   };
-
-  const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="p-8">
@@ -298,30 +302,13 @@ export default function AdminOrdersPage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="border-t border-stone-100 px-6 py-4 flex items-center justify-between">
-            <p className="text-sm text-stone-500">
-              Halaman {page} dari {totalPages}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Sebelumnya
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-1.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Selanjutnya
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          total={total}
+          limit={limit}
+          onChange={setPage}
+          itemLabel="pesanan"
+        />
       </div>
     </div>
   );

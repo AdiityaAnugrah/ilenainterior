@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { Plus, Search, Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Pagination from '@/components/admin/Pagination';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:5000';
 
@@ -25,11 +26,13 @@ export default function AdminWallpapersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const limit = 30;
 
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/api/admin/wallpapers', { params: { search } });
+      const { data } = await api.get('/api/admin/wallpapers', { params: { search, page, limit } });
       setWallpapers(data.data);
       setTotal(data.total);
     } finally { setLoading(false); }
@@ -38,6 +41,10 @@ export default function AdminWallpapersPage() {
   useEffect(() => {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
+  }, [search, page]);
+
+  useEffect(() => {
+    setPage(1);
   }, [search]);
 
   const handleDelete = async (id: number, name: string) => {
@@ -170,6 +177,13 @@ export default function AdminWallpapersPage() {
             ))}
           </tbody>
         </table>
+        <Pagination
+          page={page}
+          total={total}
+          limit={limit}
+          onChange={setPage}
+          itemLabel="wallpaper"
+        />
       </div>
     </div>
   );

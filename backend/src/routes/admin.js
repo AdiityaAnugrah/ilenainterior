@@ -305,7 +305,8 @@ router.get('/stats', adminAuth, async (req, res) => {
 
 // GET all wallpapers (admin — termasuk nonaktif)
 router.get('/wallpapers', adminAuth, async (req, res) => {
-  const { search, category } = req.query;
+  const { search, category, page = 1, limit = 30 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
   let where = [], params = [];
 
   if (search) { where.push('name LIKE ?'); params.push(`%${search}%`); }
@@ -315,10 +316,11 @@ router.get('/wallpapers', adminAuth, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.query(
-      `SELECT * FROM wallpapers ${clause} ORDER BY created_at DESC`,
-      params
+      `SELECT * FROM wallpapers ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, parseInt(limit), offset]
     );
-    res.json({ data: rows, total: rows.length });
+    const [count] = await conn.query(`SELECT COUNT(*) as total FROM wallpapers ${clause}`, params);
+    res.json({ data: rows, total: count[0].total });
   } finally { conn.release(); }
 });
 

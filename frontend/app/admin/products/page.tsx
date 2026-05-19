@@ -5,6 +5,7 @@ import Image from 'next/image';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2, FileSpreadsheet, X, Edit3 } from 'lucide-react';
+import Pagination from '@/components/admin/Pagination';
 
 const CATEGORIES = ['sofa','meja','kursi','rak','lampu','dekorasi','kasur','lemari','aksesori','lainnya'];
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -195,6 +196,8 @@ export default function AdminProductsPage() {
   const [status,   setStatus]   = useState<StatusFilter>('all');
   const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [total, setTotal]       = useState(0);
+  const [page, setPage]         = useState(1);
+  const limit = 30;
 
   const activeFilterCount = (category !== 'all' ? 1 : 0) + (status !== 'all' ? 1 : 0) + (stockFilter !== 'all' ? 1 : 0);
   const clearFilters = () => { setCategory('all'); setStatus('all'); setStockFilter('all'); };
@@ -254,7 +257,7 @@ export default function AdminProductsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const params: Record<string, string | number> = { limit: 50 };
+      const params: Record<string, string | number> = { page, limit };
       if (search)              params.search   = search;
       if (category !== 'all')  params.category = category;
       if (status !== 'all')    params.status   = status;
@@ -268,6 +271,11 @@ export default function AdminProductsPage() {
   useEffect(() => {
     const t = setTimeout(load, 300);
     return () => clearTimeout(t);
+  }, [search, category, status, stockFilter, page]);
+
+  // Reset ke halaman 1 saat filter/search berubah
+  useEffect(() => {
+    setPage(1);
   }, [search, category, status, stockFilter]);
 
   const handleDelete = async (id: number, name: string) => {
@@ -698,6 +706,13 @@ export default function AdminProductsPage() {
             })}
           </tbody>
         </table>
+        <Pagination
+          page={page}
+          total={total}
+          limit={limit}
+          onChange={setPage}
+          itemLabel="produk"
+        />
       </div>
     </div>
   );

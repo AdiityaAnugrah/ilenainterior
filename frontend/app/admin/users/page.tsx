@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import UsersTable from '@/components/admin/UsersTable';
 import { Search, Download, Users as UsersIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Pagination from '@/components/admin/Pagination';
 
 interface User {
   id: number;
@@ -106,8 +107,6 @@ export default function AdminUsersPage() {
     router.push(`/admin/users/${userId}`);
   };
 
-  const totalPages = Math.ceil(total / limit);
-
   return (
     <div className="p-8">
       {/* Header */}
@@ -204,29 +203,15 @@ export default function AdminUsersPage() {
       <UsersTable users={users} loading={loading} onUserClick={handleUserClick} />
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="bg-white rounded-2xl border border-stone-100 mt-4 px-6 py-4 flex items-center justify-between">
-          <p className="text-sm text-stone-500">
-            Halaman {page} dari {totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Sebelumnya
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Selanjutnya
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="bg-white rounded-2xl border border-stone-100 mt-4 overflow-hidden">
+        <Pagination
+          page={page}
+          total={total}
+          limit={limit}
+          onChange={setPage}
+          itemLabel="user"
+        />
+      </div>
     </div>
   );
 }
