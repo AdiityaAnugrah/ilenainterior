@@ -436,10 +436,12 @@ export class QualityManager {
       score += 5;
     }
 
-    // Determine quality level based on score
-    if (score >= 80) {
-      return 'ULTRA';
-    } else if (score >= 60) {
+    // Determine quality level based on score.
+    // Auto-detect dicap di HIGH — ULTRA (DPR 2x + MSAA 4x) beratnya 2-3x
+    // dibanding HIGH untuk perbedaan visual marginal di monitor 1080p/1440p,
+    // dan lebih rentan kena memory pressure → context loss.
+    // ULTRA masih tersedia via manual override di panel quality.
+    if (score >= 60) {
       return 'HIGH';
     } else if (score >= 40) {
       return 'MEDIUM';
