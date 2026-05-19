@@ -67,86 +67,34 @@ const nextConfig: NextConfig = {
   // Output Configuration
   output: 'standalone', // Optimized for deployment
 
-  // Webpack Configuration for Advanced Optimizations
-  webpack: (config, { dev, isServer }) => {
-    // Production optimizations only
-    if (!dev) {
-      // Enable tree shaking
-      config.optimization = {
-        ...config.optimization,
-        usedExports: true,
-        sideEffects: false,
-        
-        // Split chunks for optimal caching
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            // Vendor chunk for node_modules
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              priority: 10,
-              reuseExistingChunk: true,
-            },
-            // Three.js specific chunk (large library)
-            three: {
-              test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
-              name: 'three',
-              priority: 20,
-              reuseExistingChunk: true,
-            },
-            // React chunk
-            react: {
-              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
-              name: 'react',
-              priority: 20,
-              reuseExistingChunk: true,
-            },
-            // Common chunk for shared code
-            common: {
-              minChunks: 2,
-              priority: 5,
-              reuseExistingChunk: true,
-              name: 'common',
-            },
-          },
-        },
-        
-        // Minimize bundle size
-        minimize: true,
-      };
-
-      // Content hashing for cache busting
-      config.output = {
-        ...config.output,
-        filename: isServer 
-          ? '[name].js' 
-          : 'static/chunks/[name].[contenthash].js',
-        chunkFilename: isServer
-          ? '[name].js'
-          : 'static/chunks/[name].[contenthash].js',
-      };
-    }
-
-    // Bundle Analyzer (optional, enable with ANALYZE=true)
+  // Webpack: HANYA untuk Bundle Analyzer (opt-in via ANALYZE=true).
+  //
+  // Sebelumnya ada custom override untuk splitChunks + output.filename +
+  // sideEffects: false. Itu konflik dengan cara Next.js 16 App Router
+  // generate client reference manifest → error production:
+  // "Invariant: The client reference manifest for route X does not exist".
+  //
+  // Next 16 sudah punya code splitting + content hashing yang optimal
+  // (termasuk three.js & react di-chunk terpisah). Jangan tambah override
+  // di sini kecuali ada masalah konkret yang bisa diukur.
+  webpack: (config, { isServer }) => {
     if (process.env.ANALYZE === 'true') {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
       config.plugins.push(
         new BundleAnalyzerPlugin({
           analyzerMode: 'static',
-          reportFilename: isServer 
-            ? '../analyze/server.html' 
+          reportFilename: isServer
+            ? '../analyze/server.html'
             : './analyze/client.html',
           openAnalyzer: false,
           generateStatsFile: true,
-          statsFilename: isServer 
-            ? '../analyze/server-stats.json' 
+          statsFilename: isServer
+            ? '../analyze/server-stats.json'
             : './analyze/client-stats.json',
         })
       );
     }
-
     return config;
   },
 
