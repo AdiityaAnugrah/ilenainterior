@@ -68,13 +68,13 @@ router.get('/products', adminAuth, async (req, res) => {
   const offset = (parseInt(page) - 1) * parseInt(limit);
   let where = [], params = [];
 
-  if (search) { where.push('(name LIKE ? OR sku LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
-  if (category && category !== 'all') { where.push('category = ?'); params.push(category); }
-  if (status === 'active')   where.push('is_active = 1');
-  if (status === 'inactive') where.push('is_active = 0');
-  if (stock === 'out')   where.push('stock = 0');
-  if (stock === 'low')   where.push('stock > 0 AND stock <= 5');
-  if (stock === 'in')    where.push('stock > 5');
+  if (search) { where.push('(p.name LIKE ? OR p.sku LIKE ?)'); params.push(`%${search}%`, `%${search}%`); }
+  if (category && category !== 'all') { where.push('p.category = ?'); params.push(category); }
+  if (status === 'active')   where.push('p.is_active = 1');
+  if (status === 'inactive') where.push('p.is_active = 0');
+  if (stock === 'out')   where.push('p.stock = 0');
+  if (stock === 'low')   where.push('p.stock > 0 AND p.stock <= 5');
+  if (stock === 'in')    where.push('p.stock > 5');
 
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const conn = await pool.getConnection();
@@ -85,7 +85,7 @@ router.get('/products', adminAuth, async (req, res) => {
        ${clause} GROUP BY p.id ORDER BY p.created_at DESC LIMIT ? OFFSET ?`,
       [...params, parseInt(limit), offset]
     );
-    const [count] = await conn.query(`SELECT COUNT(*) as total FROM products ${clause}`, params);
+    const [count] = await conn.query(`SELECT COUNT(*) as total FROM products p ${clause}`, params);
     res.json({
       data: rows.map(r => ({ ...r, dimensions: JSON.parse(r.dimensions || '{}'), tags: JSON.parse(r.tags || '[]') })),
       total: count[0].total,
