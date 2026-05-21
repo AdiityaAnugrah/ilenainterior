@@ -13,38 +13,8 @@ const CATEGORIES = [
   { value: 'rak',      label: 'Rak' },
   { value: 'lampu',    label: 'Lampu' },
   { value: 'dekorasi', label: 'Dekorasi' },
-  { value: 'aksesori', label: '✨ Aksesori' },
+  { value: 'aksesori', label: 'Aksesori' },
 ];
-
-const FREE_ACCESSORIES: Product[] = [
-  { id: -1,  name: 'Vas Bunga',        category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 20,  depth: 20,  height: 35 } },
-  { id: -2,  name: 'Tanaman Pot Kecil',category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 25,  depth: 25,  height: 45 } },
-  { id: -3,  name: 'Tanaman Pot Besar',category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 45,  depth: 45,  height: 90 } },
-  { id: -4,  name: 'Lilin Dekorasi',   category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 8,   depth: 8,   height: 15 } },
-  { id: -5,  name: 'Bingkai Foto S',   category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 25,  depth: 5,   height: 30 } },
-  { id: -6,  name: 'Bingkai Foto L',   category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 60,  depth: 5,   height: 80 } },
-  { id: -7,  name: 'Patung Kecil',     category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 15,  depth: 15,  height: 25 } },
-  { id: -8,  name: 'Karpet Bundar',    category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 150, depth: 150, height: 2  } },
-  { id: -9,  name: 'Bantal Sofa',      category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 45,  depth: 45,  height: 15 } },
-  { id: -10, name: 'Lampu Meja',       category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 25,  depth: 25,  height: 50 } },
-  { id: -11, name: 'Cermin Bulat',     category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 60,  depth: 5,   height: 60 } },
-  { id: -12, name: 'Jam Dinding',      category: 'aksesori', price: 0, thumbnail: '', dimensions: { width: 30,  depth: 5,   height: 30 } },
-];
-
-const ACCESSORY_EMOJI: Record<string, string> = {
-  'Vas Bunga':         '🏺',
-  'Tanaman Pot Kecil': '🌿',
-  'Tanaman Pot Besar': '🌳',
-  'Lilin Dekorasi':    '🕯️',
-  'Bingkai Foto S':    '🖼️',
-  'Bingkai Foto L':    '🖼️',
-  'Patung Kecil':      '🗿',
-  'Karpet Bundar':     '⭕',
-  'Bantal Sofa':       '🛋️',
-  'Lampu Meja':        '💡',
-  'Cermin Bulat':      '🪞',
-  'Jam Dinding':       '🕐',
-};
 
 interface Product {
   id: number;
@@ -76,7 +46,6 @@ export default function CatalogPanel({ onDragStart, onAddProduct }: CatalogPanel
         const { data } = await api.get('/api/products', { params });
         setProducts(data.data || []);
       } catch {
-        // fallback ke mock data kalau backend belum jalan
         setProducts([]);
       } finally {
         setLoading(false);
@@ -126,32 +95,7 @@ export default function CatalogPanel({ onDragStart, onAddProduct }: CatalogPanel
 
       {/* Product grid */}
       <div className="flex-1 overflow-y-auto p-2">
-        {/* Aksesori gratis tab */}
-        {category === 'aksesori' ? (
-          <>
-            <p className="text-[10px] text-stone-400 mb-2 px-0.5">Gratis · bisa ditaruh di mana saja</p>
-            <div className="grid grid-cols-2 gap-2">
-              {FREE_ACCESSORIES.map((acc) => (
-                <div
-                  key={acc.id}
-                  draggable
-                  onDragStart={(e) => onDragStart(acc, e)}
-                  onClick={() => onAddProduct(acc)}
-                  className="cursor-grab active:cursor-grabbing bg-amber-50 rounded-lg overflow-hidden border border-amber-100 hover:border-amber-300 hover:shadow-sm transition-all"
-                  title={`${acc.name} — drag atau klik untuk taruh`}
-                >
-                  <div className="aspect-square flex items-center justify-center text-3xl bg-amber-50">
-                    {ACCESSORY_EMOJI[acc.name] ?? '🎨'}
-                  </div>
-                  <div className="p-1.5">
-                    <p className="text-[10px] font-medium text-stone-700 line-clamp-2 leading-tight">{acc.name}</p>
-                    <p className="text-[10px] text-amber-600 font-semibold mt-0.5">GRATIS</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : loading ? (
+        {loading ? (
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="aspect-square rounded-lg bg-stone-100 animate-pulse" />
@@ -162,70 +106,37 @@ export default function CatalogPanel({ onDragStart, onAddProduct }: CatalogPanel
             <p>Produk tidak ditemukan</p>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              {products?.map((product) => (
-                <div
-                  key={product.id}
-                  draggable
-                  onDragStart={(e) => onDragStart(product, e)}
-                  onClick={() => onAddProduct(product)}
-                  className="group cursor-grab active:cursor-grabbing bg-stone-50 rounded-lg overflow-hidden border border-stone-100 hover:border-stone-300 hover:shadow-sm transition-all"
-                  title={`${product.name} — drag atau klik untuk taruh`}
-                >
-                  <div className="relative aspect-square">
-                    <Image
-                      src={product.thumbnail || '/placeholder-product.jpg'}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="150px"
-                      loading="lazy"
-                      placeholder="blur"
-                      blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y1ZjVmNCIvPjwvc3ZnPg=="
-                    />
-                  </div>
-                  <div className="p-1.5">
-                    <p className="text-[10px] font-medium text-stone-700 line-clamp-2 leading-tight">
-                      {product.name}
-                    </p>
-                    <p className="text-[10px] text-stone-500 mt-0.5">{formatPrice(product.price)}</p>
-                  </div>
+          <div className="grid grid-cols-2 gap-2">
+            {products?.map((product) => (
+              <div
+                key={product.id}
+                draggable
+                onDragStart={(e) => onDragStart(product, e)}
+                onClick={() => onAddProduct(product)}
+                className="group cursor-grab active:cursor-grabbing bg-stone-50 rounded-lg overflow-hidden border border-stone-100 hover:border-stone-300 hover:shadow-sm transition-all"
+                title={`${product.name} — drag atau klik untuk taruh`}
+              >
+                <div className="relative aspect-square">
+                  <Image
+                    src={product.thumbnail || '/placeholder-product.jpg'}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                    sizes="150px"
+                    loading="lazy"
+                    placeholder="blur"
+                    blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y1ZjVmNCIvPjwvc3ZnPg=="
+                  />
                 </div>
-              ))}
-            </div>
-
-            {/* Aksesori gratis section at bottom of 'all' */}
-            {category === 'all' && (
-              <div className="mt-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-px flex-1 bg-stone-100" />
-                  <p className="text-[10px] text-stone-400 font-medium">✨ Aksesori Gratis</p>
-                  <div className="h-px flex-1 bg-stone-100" />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {FREE_ACCESSORIES.map((acc) => (
-                    <div
-                      key={acc.id}
-                      draggable
-                      onDragStart={(e) => onDragStart(acc, e)}
-                      onClick={() => onAddProduct(acc)}
-                      className="cursor-grab active:cursor-grabbing bg-amber-50 rounded-lg overflow-hidden border border-amber-100 hover:border-amber-300 hover:shadow-sm transition-all"
-                      title={`${acc.name} — drag atau klik untuk taruh`}
-                    >
-                      <div className="aspect-square flex items-center justify-center text-3xl bg-amber-50">
-                        {ACCESSORY_EMOJI[acc.name] ?? '🎨'}
-                      </div>
-                      <div className="p-1.5">
-                        <p className="text-[10px] font-medium text-stone-700 line-clamp-2 leading-tight">{acc.name}</p>
-                        <p className="text-[10px] text-amber-600 font-semibold mt-0.5">GRATIS</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="p-1.5">
+                  <p className="text-[10px] font-medium text-stone-700 line-clamp-2 leading-tight">
+                    {product.name}
+                  </p>
+                  <p className="text-[10px] text-stone-500 mt-0.5">{formatPrice(product.price)}</p>
                 </div>
               </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
       </div>
     </div>
