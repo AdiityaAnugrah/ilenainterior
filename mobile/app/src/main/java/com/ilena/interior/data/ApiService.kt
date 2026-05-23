@@ -9,6 +9,9 @@ interface ApiService {
     @POST("api/auth/login")
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
+    @POST("api/auth/register")
+    suspend fun register(@Body body: RegisterRequest): LoginResponse
+
     @GET("api/products")
     suspend fun getProducts(
         @Query("limit") limit: Int = 50,

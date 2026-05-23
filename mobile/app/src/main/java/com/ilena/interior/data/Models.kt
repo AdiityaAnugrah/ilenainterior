@@ -1,7 +1,10 @@
 package com.ilena.interior.data
 
-// Body & response login (lihat backend/src/routes/auth.js)
+// Body & response auth (lihat backend/src/routes/auth.js)
 data class LoginRequest(val email: String, val password: String)
+data class RegisterRequest(val name: String, val email: String, val password: String)
+
+// Login & register sama-sama balikin { token, user, ... }
 data class LoginResponse(val token: String, val user: User)
 
 data class User(

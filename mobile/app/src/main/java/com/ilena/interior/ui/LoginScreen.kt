@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +38,7 @@ import com.ilena.interior.data.Session
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onLoggedIn: (String) -> Unit) {
+fun LoginScreen(onLoggedIn: (String) -> Unit, onGoToRegister: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
@@ -141,6 +142,15 @@ fun LoginScreen(onLoggedIn: (String) -> Unit) {
                 } else {
                     Text("Masuk", fontWeight = FontWeight.SemiBold)
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onGoToRegister, enabled = !loading) {
+                Text(
+                    "Belum punya akun? Daftar",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
             }
         }
     }
