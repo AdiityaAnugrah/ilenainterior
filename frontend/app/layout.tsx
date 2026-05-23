@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
@@ -16,6 +16,27 @@ export const metadata: Metadata = {
     template: '%s | ILENA INTERIOR',
   },
   description: 'Desain interior impianmu secara virtual. Atur furniture, lihat dalam 3D, dan langsung beli.',
+  // Manifest di-link otomatis oleh konvensi file app/manifest.ts
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'ILENA',
+  },
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
+};
+
+// Next 16: viewport dipisah dari metadata. width/initial-scale default sudah
+// device-width; kita sengaja TIDAK mematikan zoom global demi aksesibilitas —
+// halaman planner mencegah pinch lewat `touch-action: none` di canvasnya.
+export const viewport: Viewport = {
+  themeColor: '#1c1917',
+  colorScheme: 'light',
 };
 
 // Inline early-cleanup script. Sengaja TIDAK pakai chunk/import supaya

@@ -95,9 +95,9 @@ export default function Step3Material() {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Left — Material controls */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-stone-200 flex flex-col overflow-hidden">
+    <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+      {/* Left — Material controls (di HP: di bawah preview 3D) */}
+      <div className="order-2 md:order-1 w-full md:w-72 flex-1 md:flex-none bg-white md:border-r border-stone-200 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-stone-100">
           <h2 className="text-base font-semibold text-stone-800 mb-1">Material & Warna</h2>
           <p className="text-xs text-stone-500">Kustomisasi tampilan ruangan kamu.</p>
@@ -405,8 +405,10 @@ export default function Step3Material() {
         </div>
       </div>
 
-      {/* Right — Live 3D preview */}
-      <Canvas3D />
+      {/* Right — Live 3D preview (di HP: di atas, tinggi tetap) */}
+      <div className="order-1 md:order-2 flex h-[42vh] md:h-auto md:flex-1 overflow-hidden">
+        <Canvas3D />
+      </div>
     </div>
   );
 }

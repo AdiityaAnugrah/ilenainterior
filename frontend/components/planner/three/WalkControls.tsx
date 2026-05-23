@@ -8,9 +8,12 @@ const SPEED = 3;
 interface Props {
   active: boolean;
   onExit: () => void;
+  // Input sentuh opsional: joystick (x/y -1..1) & akumulasi delta look.
+  moveRef?: React.RefObject<{ x: number; y: number }>;
+  lookRef?: React.RefObject<{ dx: number; dy: number }>;
 }
 
-export default function WalkControls({ active, onExit }: Props) {
+export default function WalkControls({ active, onExit, moveRef, lookRef }: Props) {
   const { camera, gl } = useThree();
   const keys    = useRef<Record<string, boolean>>({});
   const euler   = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
@@ -65,15 +68,23 @@ export default function WalkControls({ active, onExit }: Props) {
     };
   }, [camera, gl]);
 
-  // Movement per frame
+  // Movement + look per frame
   useFrame((_, delta) => {
     if (!activeRef.current) return;
 
+    // Look dari sentuh (akumulasi delta geser layar), diterapkan tiap frame
+    const look = lookRef?.current;
+    if (look && (look.dx !== 0 || look.dy !== 0)) {
+      euler.current.y -= look.dx * 0.004;
+      euler.current.x -= look.dy * 0.004;
+      euler.current.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, euler.current.x));
+      camera.quaternion.setFromEuler(euler.current);
+      look.dx = 0;
+      look.dy = 0;
+    }
+
     const k = keys.current;
-    const moving =
-      k['KeyW'] || k['KeyS'] || k['KeyA'] || k['KeyD'] ||
-      k['ArrowUp'] || k['ArrowDown'] || k['ArrowLeft'] || k['ArrowRight'];
-    if (!moving) return;
+    const j = moveRef?.current ?? { x: 0, y: 0 };
 
     const forward = new THREE.Vector3(-Math.sin(euler.current.y), 0, -Math.cos(euler.current.y));
     const right   = new THREE.Vector3( Math.cos(euler.current.y), 0, -Math.sin(euler.current.y));
@@ -83,6 +94,14 @@ export default function WalkControls({ active, onExit }: Props) {
     if (k['KeyS'] || k['ArrowDown'])  move.addScaledVector(forward, -SPEED * delta);
     if (k['KeyA'] || k['ArrowLeft'])  move.addScaledVector(right,   -SPEED * delta);
     if (k['KeyD'] || k['ArrowRight']) move.addScaledVector(right,    SPEED * delta);
+
+    // Joystick analog (sentuh)
+    if (j.x !== 0 || j.y !== 0) {
+      move.addScaledVector(forward, j.y * SPEED * delta);
+      move.addScaledVector(right,   j.x * SPEED * delta);
+    }
+
+    if (move.lengthSq() === 0) return;
 
     camera.position.add(move);
     camera.position.y = 1.65; // tetap di ketinggian mata

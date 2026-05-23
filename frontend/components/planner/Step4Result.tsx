@@ -125,9 +125,9 @@ export default function Step4Result() {
   };
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Left panel */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-stone-200 flex flex-col overflow-hidden">
+    <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+      {/* Left panel (di HP: di bawah preview) */}
+      <div className="order-2 md:order-1 w-full md:w-72 flex-1 md:flex-none bg-white md:border-r border-stone-200 flex flex-col overflow-hidden">
         <div className="p-4 border-b border-stone-100">
           <h2 className="text-base font-semibold text-stone-800 mb-1">Hasil Desain</h2>
           <p className="text-xs text-stone-500">Lihat ruangan, ekspor, dan konsultasi via WA.</p>
@@ -261,8 +261,8 @@ export default function Step4Result() {
         </div>
       </div>
 
-      {/* Right — 3D / Walk */}
-      <div className="flex-1 overflow-hidden flex">
+      {/* Right — 3D / Walk (di HP: di atas, tinggi tetap) */}
+      <div className="order-1 md:order-2 h-[42vh] md:h-auto md:flex-1 overflow-hidden flex">
         {mode === '3d'   && <Canvas3D />}
         {mode === 'walk' && <CanvasWalk />}
       </div>

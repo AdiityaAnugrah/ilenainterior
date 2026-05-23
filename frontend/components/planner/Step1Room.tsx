@@ -40,9 +40,9 @@ export default function Step1Room() {
   const previewD = Math.round(roomConfig.depth * GRID_PX);
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {/* Left panel — Form */}
-      <div className="w-72 flex-shrink-0 bg-white border-r border-stone-200 flex flex-col overflow-y-auto">
+    <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
+      {/* Left panel — Form (di HP: full-width, lalu denah di bawahnya) */}
+      <div className="w-full md:w-72 flex-shrink-0 bg-white md:border-r border-stone-200 flex flex-col md:overflow-y-auto">
         <div className="p-6 flex flex-col gap-6 flex-1">
           <div>
             <h2 className="text-lg font-semibold text-stone-800 mb-1">Atur Ukuran Ruangan</h2>
@@ -123,7 +123,7 @@ export default function Step1Room() {
       </div>
 
       {/* Right — Live preview denah */}
-      <div className="flex-1 bg-stone-100 flex items-center justify-center overflow-hidden relative">
+      <div className="flex-1 min-h-[16rem] bg-stone-100 flex items-center justify-center overflow-hidden relative">
         <div className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage: 'linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)',

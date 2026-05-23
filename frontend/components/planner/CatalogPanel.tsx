@@ -56,7 +56,7 @@ export default function CatalogPanel({ onDragStart, onAddProduct }: CatalogPanel
   }, [search, category]);
 
   return (
-    <div className="w-72 shrink-0 bg-white border-r border-stone-200 flex flex-col overflow-hidden">
+    <div className="w-full md:w-72 h-full shrink-0 bg-white md:border-r border-stone-200 flex flex-col overflow-hidden">
       {/* Search */}
       <div className="p-3 border-b border-stone-100">
         <div className="relative">

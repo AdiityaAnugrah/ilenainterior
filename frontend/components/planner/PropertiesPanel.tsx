@@ -14,7 +14,7 @@ export default function PropertiesPanel({ onNavigateToResult }: PropertiesPanelP
   const selected = items.find((i) => i.id === selectedItemId);
 
   return (
-    <div className="w-72 flex-shrink-0 bg-white border-l border-stone-200 flex flex-col overflow-hidden">
+    <div className="w-full md:w-72 h-full flex-shrink-0 bg-white md:border-l border-stone-200 flex flex-col overflow-y-auto">
       {selected ? (
         <>
           {/* Item info */}

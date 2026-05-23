@@ -54,3 +54,18 @@ body {
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
+
+/* Sembunyikan scrollbar tapi tetap bisa di-scroll (dipakai di bar/strip mobile) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe-area helper untuk perangkat dengan notch/home-indicator (iOS).
+   Dipakai pada bottom-sheet agar konten tidak tertutup home-indicator. */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

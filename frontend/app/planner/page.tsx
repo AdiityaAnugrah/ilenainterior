@@ -77,7 +77,7 @@ function PlannerContent() {
   }, []);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-stone-50">
+    <div className="h-dvh flex flex-col overflow-hidden bg-stone-50">
       <WizardBar />
       <div className="flex flex-1 overflow-hidden">
         {currentStep === 1 && <Step1Room />}
@@ -92,7 +92,7 @@ function PlannerContent() {
 export default function PlannerPage() {
   return (
     <Suspense fallback={
-      <div className="h-screen flex items-center justify-center bg-stone-50">
+      <div className="h-dvh flex items-center justify-center bg-stone-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
           <p className="text-stone-600">Loading planner...</p>

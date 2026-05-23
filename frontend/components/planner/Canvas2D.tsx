@@ -327,11 +327,23 @@ export default function Canvas2D({ pendingProduct, onProductPlaced }: Canvas2DPr
     });
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
+  // Pinch-zoom state (2 jari) untuk perangkat sentuh
+  const pinch = useRef<{
+    startDist: number;
+    startScale: number;
+    midCx: number;
+    midCy: number;
+    roomX: number;
+    roomY: number;
+  } | null>(null);
 
+  const toCanvasXY = (clientX: number, clientY: number) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { cx: clientX - rect.left, cy: clientY - rect.top };
+  };
+
+  // ── Logika pointer bersama (dipakai mouse & touch) ──────────────────────────
+  const pointerDown = (cx: number, cy: number) => {
     // Door drag hit (south wall)
     const sc = SCALE.current;
     const ox = offset.current.x;
@@ -373,11 +385,7 @@ export default function Canvas2D({ pendingProduct, onProductPlaced }: Canvas2DPr
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
-
+  const pointerMove = (cx: number, cy: number) => {
     if (wallFeatureDrag.current) {
       const { type, startCanvasX, origOffsetX } = wallFeatureDrag.current;
       const deltaCm = (cx - startCanvasX) / SCALE.current;
@@ -420,7 +428,7 @@ export default function Canvas2D({ pendingProduct, onProductPlaced }: Canvas2DPr
     }
   };
 
-  const handleMouseUp = () => {
+  const pointerUp = () => {
     wallFeatureDrag.current = null;
     if (dragging.current?.invalid) {
       // Snap back to last valid position
@@ -430,11 +438,86 @@ export default function Canvas2D({ pendingProduct, onProductPlaced }: Canvas2DPr
     isDraggingCanvas.current = false;
   };
 
+  // ── Mouse wrappers ──────────────────────────────────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { cx, cy } = toCanvasXY(e.clientX, e.clientY);
+    pointerDown(cx, cy);
+  };
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { cx, cy } = toCanvasXY(e.clientX, e.clientY);
+    pointerMove(cx, cy);
+  };
+  const handleMouseUp = () => pointerUp();
+
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.1 : 0.9;
     SCALE.current = Math.max(0.2, Math.min(3, SCALE.current * factor));
     draw();
+  };
+
+  // ── Touch wrappers ──────────────────────────────────────────────────────────
+  // 1 jari = pointer (pilih/geser item, atau pan kanvas), 2 jari = pinch zoom.
+  // Canvas memakai `touch-none` agar browser tidak scroll/zoom sendiri, jadi
+  // tidak perlu preventDefault (yang bermasalah dengan listener pasif React).
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 2) {
+      dragging.current = null;
+      isDraggingCanvas.current = false;
+      wallFeatureDrag.current = null;
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const { cx, cy } = toCanvasXY((t0.clientX + t1.clientX) / 2, (t0.clientY + t1.clientY) / 2);
+      pinch.current = {
+        startDist: dist,
+        startScale: SCALE.current,
+        midCx: cx,
+        midCy: cy,
+        roomX: (cx - offset.current.x) / SCALE.current,
+        roomY: (cy - offset.current.y) / SCALE.current,
+      };
+      return;
+    }
+    if (e.touches.length === 1 && !pinch.current) {
+      const t = e.touches[0];
+      const { cx, cy } = toCanvasXY(t.clientX, t.clientY);
+      pointerDown(cx, cy);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (pinch.current && e.touches.length >= 2) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const factor = dist / pinch.current.startDist;
+      const newScale = Math.max(0.2, Math.min(3, pinch.current.startScale * factor));
+      SCALE.current = newScale;
+      offset.current = {
+        x: pinch.current.midCx - pinch.current.roomX * newScale,
+        y: pinch.current.midCy - pinch.current.roomY * newScale,
+      };
+      draw();
+      return;
+    }
+    if (!pinch.current && e.touches.length === 1) {
+      const t = e.touches[0];
+      const { cx, cy } = toCanvasXY(t.clientX, t.clientY);
+      pointerMove(cx, cy);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 0) {
+      pinch.current = null;
+      pointerUp();
+    } else if (pinch.current) {
+      // Salah satu jari diangkat saat pinch — hentikan & abaikan sisa jari
+      // sampai semua terangkat agar tampilan tidak "loncat".
+      pinch.current = null;
+      dragging.current = null;
+      isDraggingCanvas.current = false;
+      wallFeatureDrag.current = null;
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLCanvasElement>) => {
@@ -505,12 +588,16 @@ export default function Canvas2D({ pendingProduct, onProductPlaced }: Canvas2DPr
     <div className="relative flex-1 overflow-hidden">
       <canvas
         ref={canvasRef}
-        className="w-full h-full cursor-default"
+        className="w-full h-full cursor-default touch-none select-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       />
@@ -538,8 +625,12 @@ export default function Canvas2D({ pendingProduct, onProductPlaced }: Canvas2DPr
       {items.length === 0 && (
         <div className="absolute inset-0 flex items-end justify-center pb-20 pointer-events-none">
           <div className="bg-white/90 backdrop-blur-sm rounded-xl px-4 py-3 shadow-sm border border-stone-100 text-center">
-            <p className="text-sm text-stone-600 font-medium">Drag furniture dari panel kiri</p>
-            <p className="text-xs text-stone-400 mt-0.5">atau klik produk untuk langsung taruh di tengah</p>
+            {/* Desktop */}
+            <p className="hidden md:block text-sm text-stone-600 font-medium">Drag furniture dari panel kiri</p>
+            <p className="hidden md:block text-xs text-stone-400 mt-0.5">atau klik produk untuk langsung taruh di tengah</p>
+            {/* Mobile */}
+            <p className="md:hidden text-sm text-stone-600 font-medium">Ketuk tombol Furniture</p>
+            <p className="md:hidden text-xs text-stone-400 mt-0.5">lalu pilih produk untuk menaruhnya · cubit untuk zoom</p>
           </div>
         </div>
       )}

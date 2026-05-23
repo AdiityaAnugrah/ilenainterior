@@ -44,7 +44,7 @@ export default function LandingPage() {
           <span className="inline-block bg-warm-100 text-warm-600 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-6">
             Room Planner Interaktif
           </span>
-          <h1 className="font-display text-5xl md:text-7xl font-bold text-stone-900 leading-tight mb-6">
+          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl font-bold text-stone-900 leading-tight mb-6">
             Rancang Ruangan
             <br />
             <span className="text-stone-400">Impianmu</span>
@@ -67,7 +67,7 @@ export default function LandingPage() {
               Lihat Katalog
             </Link>
           </div>
-          <p className="text-xs text-stone-400 mt-4">Gratis · Tidak perlu akun · Desktop only</p>
+          <p className="text-xs text-stone-400 mt-4">Gratis · Tidak perlu akun · Bisa di HP &amp; desktop</p>
         </div>
       </section>
 

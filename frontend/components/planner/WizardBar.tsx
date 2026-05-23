@@ -42,13 +42,13 @@ export default function WizardBar() {
   };
 
   return (
-    <header suppressHydrationWarning className="h-14 bg-white border-b border-stone-200 flex items-center px-4 gap-3 shrink-0 z-10">
+    <header suppressHydrationWarning className="h-14 bg-white border-b border-stone-200 flex items-center px-3 sm:px-4 gap-2 sm:gap-3 shrink-0 z-10">
       <Link href="/" className="font-display text-base font-semibold text-stone-800 tracking-wide whitespace-nowrap">
         ILENA
       </Link>
 
-      {/* Editable project name */}
-      <div className="h-6 w-px bg-stone-200 mx-1" />
+      {/* Editable project name — disembunyikan di layar kecil untuk hemat ruang */}
+      <div className="hidden sm:block h-6 w-px bg-stone-200 mx-1" />
       {editingName ? (
         <input
           autoFocus
@@ -56,26 +56,26 @@ export default function WizardBar() {
           onChange={(e) => setProjectName(e.target.value)}
           onBlur={() => setEditingName(false)}
           onKeyDown={(e) => e.key === 'Enter' && setEditingName(false)}
-          className="text-sm font-medium text-stone-700 border-b border-stone-400 bg-transparent focus:outline-none w-40"
+          className="hidden sm:block text-sm font-medium text-stone-700 border-b border-stone-400 bg-transparent focus:outline-none w-40"
         />
       ) : (
         <button
           onClick={() => setEditingName(true)}
-          className="text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors max-w-[140px] truncate"
+          className="hidden sm:block text-sm font-medium text-stone-600 hover:text-stone-800 transition-colors max-w-[140px] truncate"
           title="Klik untuk rename"
         >
           {projectName}
         </button>
       )}
 
-      {/* Step progress */}
-      <div className="flex items-center gap-1 flex-1 ml-2">
+      {/* Step progress — di HP hanya pil angka (label & konektor disembunyikan) */}
+      <div className="flex items-center gap-1 flex-1 ml-1 sm:ml-2 overflow-x-auto no-scrollbar">
         {STEPS.map((step, i) => (
           <div key={step.num} className="flex items-center gap-1">
             <button
               onClick={() => setCurrentStep(step.num)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                'flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
                 currentStep === step.num
                   ? 'bg-stone-800 text-white'
                   : currentStep > step.num
@@ -84,22 +84,27 @@ export default function WizardBar() {
               )}
             >
               <span className={cn(
-                'w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold',
+                'w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0',
                 currentStep === step.num ? 'bg-white/20' : 'bg-stone-300/40'
               )}>
                 {step.num}
               </span>
-              {step.label}
+              {/* Label tampil penuh di >=sm; di HP hanya untuk step aktif */}
+              <span className={cn(currentStep === step.num ? 'inline' : 'hidden sm:inline')}>
+                {step.label}
+              </span>
             </button>
             {i < STEPS.length - 1 && (
-              <div className={cn('w-5 h-px', currentStep > step.num ? 'bg-stone-400' : 'bg-stone-200')} />
+              <div className={cn('hidden sm:block w-5 h-px', currentStep > step.num ? 'bg-stone-400' : 'bg-stone-200')} />
             )}
           </div>
         ))}
       </div>
 
-      {/* Auto-save indicator */}
-      <AutoSaveIndicator isSaving={isSaving} lastSaved={lastSaved} />
+      {/* Auto-save indicator — sembunyi di HP untuk hemat ruang */}
+      <div className="hidden sm:flex items-center">
+        <AutoSaveIndicator isSaving={isSaving} lastSaved={lastSaved} />
+      </div>
 
       {/* View toggle */}
       {currentStep === 3 && (
@@ -125,14 +130,14 @@ export default function WizardBar() {
         onClick={handleSave}
         disabled={saving}
         className={cn(
-          'flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all',
+          'flex items-center gap-1.5 text-xs font-medium px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all shrink-0',
           saved
             ? 'border-green-200 bg-green-50 text-green-700'
             : 'border-stone-200 text-stone-600 hover:bg-stone-50'
         )}
       >
         {saved ? <Check size={13} /> : <Save size={13} />}
-        {saving ? 'Menyimpan...' : saved ? 'Tersimpan' : 'Simpan'}
+        <span className="hidden sm:inline">{saving ? 'Menyimpan...' : saved ? 'Tersimpan' : 'Simpan'}</span>
       </button>
 
       {/* User */}
