@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-  ArrowRight,
   Sparkles,
   Sofa,
   Layers,
@@ -124,12 +123,7 @@ export default function IklanPage() {
               Modern · Estetik · Premium
             </span>
           </Link>
-          <Link
-            href="/planner"
-            className="hidden sm:inline-flex items-center gap-2 bg-stone-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-stone-800 transition-colors"
-          >
-            Mulai Desain <ArrowRight size={14} />
-          </Link>
+          {/* CTA desain disembunyikan sementara — akan diarahkan ke unduh APK setelah rilis Play Store */}
         </div>
       </nav>
 
@@ -160,12 +154,7 @@ export default function IklanPage() {
           </p>
 
           <div className="flex items-center justify-center gap-3 flex-wrap mb-6">
-            <Link
-              href="/planner"
-              className="inline-flex items-center gap-2 bg-stone-900 text-white font-medium px-8 py-4 rounded-xl hover:bg-stone-800 transition-all hover:scale-105 text-base shadow-xl shadow-stone-300/50"
-            >
-              Mulai Desain Gratis <ArrowRight size={18} />
-            </Link>
+            {/* CTA desain disembunyikan sementara — akan diarahkan ke unduh APK setelah rilis Play Store */}
             <a
               href={waUrl}
               target="_blank"
@@ -291,12 +280,6 @@ export default function IklanPage() {
                       </li>
                     ))}
                   </ul>
-                  <Link
-                    href="/planner"
-                    className="mt-auto inline-flex items-center gap-1.5 text-sm font-semibold text-stone-900 hover:text-warm-600 transition-colors"
-                  >
-                    Coba mode ini <ArrowRight size={14} />
-                  </Link>
                 </div>
               </div>
             ))}
@@ -346,12 +329,7 @@ export default function IklanPage() {
             Rancang dulu, baru pesan. Mulai gratis sekarang atau chat tim ILENA langsung di WhatsApp.
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Link
-              href="/planner"
-              className="inline-flex items-center gap-2 bg-white text-stone-900 font-semibold px-8 py-4 rounded-xl hover:bg-warm-50 transition-all hover:scale-105 shadow-xl"
-            >
-              Mulai Desain Gratis <ArrowRight size={18} />
-            </Link>
+            {/* CTA desain disembunyikan sementara — akan diarahkan ke unduh APK setelah rilis Play Store */}
             <a
               href={waUrl}
               target="_blank"
