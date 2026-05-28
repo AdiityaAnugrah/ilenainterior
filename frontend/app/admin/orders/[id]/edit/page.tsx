@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import axios from 'axios';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { ArrowLeft, Plus, X, Search, Package } from 'lucide-react';
@@ -33,6 +34,33 @@ interface OrderItem {
   price: number;
 }
 
+interface OrderResponseItem {
+  product_id: number;
+  product_name: string;
+  price: number;
+  thumbnail: string | null;
+  variant_id: number | null;
+  variant_name: string | null;
+  quantity: number;
+}
+
+interface OrderResponse {
+  status: string;
+  order_code: string;
+  shipping_cost: number;
+  discount: number;
+  shipping_address: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    city: string;
+    postal_code: string;
+  };
+  notes: string | null;
+  items: OrderResponseItem[];
+}
+
 export default function EditOrderPage() {
   const params = useParams();
   const router = useRouter();
@@ -57,20 +85,10 @@ export default function EditOrderPage() {
   });
   const [notes, setNotes] = useState('');
 
-  useEffect(() => {
-    loadOrder();
-  }, [params.id]);
-
-  useEffect(() => {
-    if (searchProduct.length > 2) {
-      loadProducts();
-    }
-  }, [searchProduct]);
-
-  const loadOrder = async () => {
+  const loadOrder = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/api/admin/orders/${params.id}`);
+      const { data } = await api.get<OrderResponse>(`/api/admin/orders/${params.id}`);
       
       if (data.status !== 'pending') {
         toast.error('Hanya pesanan dengan status pending yang dapat diedit');
@@ -85,7 +103,7 @@ export default function EditOrderPage() {
       setNotes(data.notes || '');
       
       // Convert order items to form format
-      const formattedItems: OrderItem[] = data.items.map((item: any) => ({
+      const formattedItems: OrderItem[] = data.items.map((item) => ({
         product_id: item.product_id,
         product_name: item.product_name,
         product_price: item.price,
@@ -96,24 +114,40 @@ export default function EditOrderPage() {
         price: item.price,
       }));
       setItems(formattedItems);
-    } catch (error) {
+    } catch {
       toast.error('Gagal memuat pesanan');
       router.push('/admin/orders');
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id, router]);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
       const { data } = await api.get('/api/admin/products', {
         params: { search: searchProduct, limit: 10 },
       });
       setProducts(data.data);
-    } catch (error) {
+    } catch {
       toast.error('Gagal memuat produk');
     }
-  };
+  }, [searchProduct]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void loadOrder();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadOrder]);
+
+  useEffect(() => {
+    if (searchProduct.length > 2) {
+      const timer = setTimeout(() => {
+        void loadProducts();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [searchProduct, loadProducts]);
 
   const addProduct = async (product: Product) => {
     if (product.variants && product.variants.length > 0) {
@@ -189,8 +223,11 @@ export default function EditOrderPage() {
 
       toast.success('Pesanan berhasil diperbarui');
       router.push(`/admin/orders/${params.id}`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Gagal memperbarui pesanan');
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? 'Gagal memperbarui pesanan')
+        : 'Gagal memperbarui pesanan';
+      toast.error(message);
     } finally {
       setSaving(false);
     }

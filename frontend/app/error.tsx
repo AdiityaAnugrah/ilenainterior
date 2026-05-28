@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { nukeStaleClientState } from '@/lib/nukeStaleClientState';
 
@@ -17,7 +18,6 @@ export default function Error({
   reset: () => void;
 }) {
   const [attempt, setAttempt] = useState(0);
-  const [autoRecoverFailed, setAutoRecoverFailed] = useState(false);
 
   useEffect(() => {
     console.error('[app/error]', error);
@@ -50,12 +50,12 @@ export default function Error({
 
     if (current >= MAX_AUTO_ATTEMPTS) {
       // Sudah gagal recover beberapa kali — kasih UI manual ke user.
-      setAutoRecoverFailed(true);
+      setTimeout(() => setAttempt(MAX_AUTO_ATTEMPTS + 1), 0);
       return;
     }
 
     sessionStorage.setItem(key, String(current + 1));
-    setAttempt(current + 1);
+    setTimeout(() => setAttempt(current + 1), 0);
 
     // Strategi recovery dua tahap:
     // 1. Coba reset() dulu (rekonsiliasi React, no full reload, lebih cepat)
@@ -84,7 +84,7 @@ export default function Error({
   }, [error, reset]);
 
   // UI manual hanya muncul setelah MAX_AUTO_ATTEMPTS gagal
-  if (autoRecoverFailed) {
+  if (attempt > MAX_AUTO_ATTEMPTS) {
     const isDev = process.env.NODE_ENV !== 'production';
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-50 px-4">
@@ -106,12 +106,12 @@ export default function Error({
             >
               Bersihkan & muat ulang
             </button>
-            <a
+            <Link
               href="/"
               className="px-4 py-2 bg-stone-100 text-stone-800 text-sm font-medium rounded-md hover:bg-stone-200 transition-colors"
             >
               Ke beranda
-            </a>
+            </Link>
           </div>
         </div>
       </div>

@@ -3,8 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-import { ShoppingCart, Package, AlertTriangle, CheckCircle, Bell } from 'lucide-react';
+import { ShoppingCart, AlertTriangle, CheckCircle, Bell } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+
+interface AdminNotification {
+  id: number;
+  type: 'new_order' | 'order_status' | 'low_stock' | 'payment_confirmed';
+  message: string;
+  related_entity_id: number | null;
+  created_at: string;
+  is_read: boolean;
+}
 
 const NotificationsPage: React.FC = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useWebSocket();
@@ -13,8 +22,8 @@ const NotificationsPage: React.FC = () => {
 
   useEffect(() => {
     // Refresh notifications when page loads
-    refreshNotifications();
-  }, []);
+    void refreshNotifications();
+  }, [refreshNotifications]);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -51,7 +60,7 @@ const NotificationsPage: React.FC = () => {
     }
   };
 
-  const handleNotificationClick = async (notification: any) => {
+  const handleNotificationClick = async (notification: AdminNotification) => {
     // Mark as read
     await markAsRead(notification.id);
     
@@ -62,7 +71,7 @@ const NotificationsPage: React.FC = () => {
     }
   };
 
-  const getNotificationRoute = (notification: any): string => {
+  const getNotificationRoute = (notification: AdminNotification): string => {
     const { type, related_entity_id } = notification;
     
     switch (type) {
@@ -112,12 +121,12 @@ const NotificationsPage: React.FC = () => {
               <Bell size={48} className="mx-auto mb-4 text-stone-300" />
               <p className="text-stone-600 text-lg font-medium">No notifications yet</p>
               <p className="text-stone-500 text-sm mt-1">
-                You'll see notifications here when important events occur
+                You will see notifications here when important events occur
               </p>
             </div>
           ) : (
             <div className="divide-y divide-stone-100">
-              {notifications.map((notification) => (
+              {notifications.map((notification: AdminNotification) => (
                 <button
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}

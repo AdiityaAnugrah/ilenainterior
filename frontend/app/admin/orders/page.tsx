@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -67,7 +67,7 @@ export default function AdminOrdersPage() {
 
   const limit = 30;
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/api/admin/orders', {
@@ -78,22 +78,19 @@ export default function AdminOrdersPage() {
       if (data.statusCounts) {
         setStatusCounts(data.statusCounts);
       }
-    } catch (error) {
+    } catch {
       toast.error('Gagal memuat pesanan');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
   }, [search, statusFilter, dateFrom, dateTo, page]);
 
-  // Reset ke halaman 1 saat filter/search berubah
   useEffect(() => {
-    setPage(1);
-  }, [search, dateFrom, dateTo]);
+    const t = setTimeout(() => {
+      void load();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const handleExport = async () => {
     try {
@@ -111,7 +108,7 @@ export default function AdminOrdersPage() {
       link.click();
       link.remove();
       toast.success('Export berhasil');
-    } catch (error) {
+    } catch {
       toast.error('Gagal export pesanan');
     }
   };
@@ -158,7 +155,10 @@ export default function AdminOrdersPage() {
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Cari kode pesanan atau nama customer..."
               className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-stone-400"
             />
@@ -166,14 +166,20 @@ export default function AdminOrdersPage() {
           <input
             type="date"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
             placeholder="Dari tanggal"
             className="px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-stone-400"
           />
           <input
             type="date"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
             placeholder="Sampai tanggal"
             className="px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:border-stone-400"
           />

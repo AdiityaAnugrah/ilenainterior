@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import axios from 'axios';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { ArrowLeft, Plus, X, Search, Package } from 'lucide-react';
@@ -33,16 +34,9 @@ interface OrderItem {
   price: number;
 }
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
-
 export default function NewOrderPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [searchProduct, setSearchProduct] = useState('');
   const [showProductSearch, setShowProductSearch] = useState(false);
@@ -62,36 +56,25 @@ export default function NewOrderPage() {
   });
   const [notes, setNotes] = useState('');
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  useEffect(() => {
-    if (searchProduct.length > 2) {
-      loadProducts();
-    }
-  }, [searchProduct]);
-
-  const loadUsers = async () => {
-    try {
-      const { data } = await api.get('/api/admin/products'); // Reuse endpoint or create /admin/users
-      // For now, we'll need to get users from orders or create a users endpoint
-      // Simplified: just allow manual entry
-    } catch (error) {
-      console.error('Failed to load users');
-    }
-  };
-
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
       const { data } = await api.get('/api/admin/products', {
         params: { search: searchProduct, limit: 10 },
       });
       setProducts(data.data);
-    } catch (error) {
+    } catch {
       toast.error('Gagal memuat produk');
     }
-  };
+  }, [searchProduct]);
+
+  useEffect(() => {
+    if (searchProduct.length > 2) {
+      const timer = setTimeout(() => {
+        void loadProducts();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [searchProduct, loadProducts]);
 
   const addProduct = async (product: Product) => {
     // Check if product has variants
@@ -175,8 +158,11 @@ export default function NewOrderPage() {
 
       toast.success('Pesanan berhasil dibuat');
       router.push(`/admin/orders/${data.id}`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Gagal membuat pesanan');
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? 'Gagal membuat pesanan')
+        : 'Gagal membuat pesanan';
+      toast.error(message);
     } finally {
       setLoading(false);
     }

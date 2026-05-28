@@ -14,7 +14,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [autoRecoverFailed, setAutoRecoverFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     console.error('[app/global-error]', error);
@@ -41,10 +41,11 @@ export default function GlobalError({
     const current = parseInt(sessionStorage.getItem(key) || '0', 10);
 
     if (current >= MAX_AUTO_ATTEMPTS) {
-      setAutoRecoverFailed(true);
+      setTimeout(() => setAttempt(MAX_AUTO_ATTEMPTS + 1), 0);
       return;
     }
     sessionStorage.setItem(key, String(current + 1));
+    setTimeout(() => setAttempt(current + 1), 0);
 
     const resetTimer = setTimeout(() => {
       try { reset(); } catch { /* ignore */ }
@@ -59,7 +60,7 @@ export default function GlobalError({
     };
   }, [error, reset]);
 
-  if (autoRecoverFailed) {
+  if (attempt > MAX_AUTO_ATTEMPTS) {
     return (
       <html lang="id">
         <body style={{ fontFamily: 'system-ui, sans-serif', background: '#fafaf9', margin: 0 }}>
@@ -73,9 +74,12 @@ export default function GlobalError({
                 <button onClick={() => nukeStaleClientState()} style={{ padding: '8px 16px', background: '#1c1917', color: '#fff', border: 0, borderRadius: 6, fontSize: 14, cursor: 'pointer' }}>
                   Bersihkan & muat ulang
                 </button>
-                <a href="/" style={{ padding: '8px 16px', background: '#f5f5f4', color: '#1c1917', borderRadius: 6, fontSize: 14, textDecoration: 'none', display: 'inline-block' }}>
+                <button
+                  onClick={() => { window.location.href = '/'; }}
+                  style={{ padding: '8px 16px', background: '#f5f5f4', color: '#1c1917', border: 0, borderRadius: 6, fontSize: 14, cursor: 'pointer' }}
+                >
                   Ke beranda
-                </a>
+                </button>
               </div>
             </div>
           </div>

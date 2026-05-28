@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -37,11 +37,7 @@ export default function InvoicePage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadOrder();
-  }, [params.id]);
-
-  const loadOrder = async () => {
+  const loadOrder = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/api/admin/orders/${params.id}`);
@@ -50,12 +46,19 @@ export default function InvoicePage() {
       setTimeout(() => {
         window.print();
       }, 500);
-    } catch (error) {
+    } catch {
       console.error('Failed to load order');
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void loadOrder();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadOrder]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import axios from 'axios';
 import api from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import {
@@ -99,7 +100,7 @@ export default function OrderDetailPage() {
   const [newStatus, setNewStatus] = useState('');
   const [updating, setUpdating] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get(`/api/admin/orders/${params.id}`);
@@ -110,11 +111,14 @@ export default function OrderDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id, router]);
 
   useEffect(() => {
-    load();
-  }, [params.id]);
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
 
   const handleStatusUpdate = async () => {
     if (!newStatus || !order) return;
@@ -126,8 +130,11 @@ export default function OrderDetailPage() {
       setShowStatusModal(false);
       setNewStatus('');
       load();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Gagal memperbarui status');
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? 'Gagal memperbarui status')
+        : 'Gagal memperbarui status';
+      toast.error(message);
     } finally {
       setUpdating(false);
     }
