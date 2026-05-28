@@ -81,10 +81,11 @@ router.get('/:id', cacheMiddleware(300000), async (req, res) => { // 5 minutes c
 });
 
 // GET settings (public — only whatsapp_number)
-router.get('/settings/whatsapp', cacheMiddleware(300000), async (req, res) => { // 5 minutes cache
+router.get('/settings/whatsapp', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.query("SELECT `value` FROM settings WHERE `key` = 'whatsapp_number'");
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.json({ whatsapp_number: rows[0]?.value || '' });
   } finally {
     conn.release();
