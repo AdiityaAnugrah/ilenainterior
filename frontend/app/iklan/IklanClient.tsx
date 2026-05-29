@@ -1,98 +1,101 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Sparkles,
-  Sofa,
-  Layers,
-  Wand2,
-  ShieldCheck,
-  Clock,
-  Smile,
-  MessageCircle,
-  CheckCircle2,
-  Box,
-  Compass,
-  Frown,
-  DollarSign,
   AlertCircle,
+  ArrowRight,
+  Box,
+  CheckCircle2,
+  CircleDollarSign,
+  Clock3,
+  Compass,
+  LayoutGrid,
+  MessageCircle,
   Quote,
+  ShieldCheck,
+  Sofa,
+  Sparkles,
+  Star,
+  Users,
+  Wand2,
 } from 'lucide-react';
 import api from '@/lib/api';
 
-const problems = [
+const painPoints = [
   {
-    icon: DollarSign,
-    title: 'Jasa Desainer Mahal',
-    desc: 'Konsultasi interior bisa habiskan jutaan, padahal cuma butuh gambaran kasar dulu.',
+    icon: CircleDollarSign,
+    title: 'Takut biaya desain membengkak',
+    desc: 'Banyak orang ingin lihat gambaran dulu, tapi langsung ketemu biaya konsultasi tinggi.',
   },
   {
     icon: AlertCircle,
-    title: 'Beli Furniture, Tidak Cocok',
-    desc: 'Sofanya kebesaran, warnanya tabrakan dengan dinding. Telanjur dibeli, susah retur.',
-  },
-  {
-    icon: Frown,
-    title: 'Susah Bayangin Hasilnya',
-    desc: 'Lihat di foto bagus, sampai rumah ternyata beda. Layout ruangan jadi sumber stres.',
-  },
-];
-
-const pillars = [
-  {
-    icon: Wand2,
-    title: 'Desain Sendiri, Gratis',
-    desc: 'Drag & drop furniture asli ILENA ke denah ruanganmu. Tanpa skill desain, tanpa biaya.',
-  },
-  {
-    icon: Box,
-    title: 'Lihat dalam 3D & Walk-through',
-    desc: 'Switch ke mode 3D, jalan-jalan virtual di ruanganmu. Yakin sebelum bayar.',
-  },
-  {
-    icon: MessageCircle,
-    title: 'Konsultasi WhatsApp',
-    desc: 'Desainmu siap? Kirim ke tim ILENA, langsung dibantu sampai pesanan tiba.',
-  },
-];
-
-const modes = [
-  {
-    icon: Layers,
-    badge: 'Mode 2D',
-    title: 'Denah Cepat & Akurat',
-    desc: 'Mulai dari ukuran ruangan, tambah tembok, pintu, jendela. Drag furniture ke posisi yang pas.',
-    bullets: ['Ukuran presisi cm', 'Library furniture asli', 'Auto-snap & alignment'],
-  },
-  {
-    icon: Box,
-    badge: 'Mode 3D',
-    title: 'Visualisasi Realistis',
-    desc: 'Lihat ruanganmu dari sudut manapun. Kombinasi material, warna, dan pencahayaan auto-render.',
-    bullets: ['Lighting siang & malam', 'Material PBR realistis', 'Render instan'],
+    title: 'Ragu ukuran furniture cocok',
+    desc: 'Di foto terlihat pas, tapi saat tiba di rumah ternyata terlalu besar atau terlalu kecil.',
   },
   {
     icon: Compass,
-    badge: 'Walk-through',
-    title: 'Masuk ke Ruangan Virtual',
-    desc: 'Jalan-jalan di dalam ruangan virtual seperti game. Cek skala dan suasana sebelum pesan.',
-    bullets: ['Kontrol WASD/mouse', 'POV first-person', 'Rasa ruang yang nyata'],
+    title: 'Sulit membayangkan hasil akhir',
+    desc: 'Pilihan warna, material, dan layout sering terasa abstrak sebelum dicoba langsung.',
   },
+];
+
+const productFeatures = [
+  {
+    icon: LayoutGrid,
+    title: 'Planner 2D Presisi',
+    desc: 'Atur ukuran ruang, pintu, jendela, lalu drag & drop furniture asli ILENA dengan cepat.',
+    bullets: ['Ukuran berbasis meter', 'Auto-snap penempatan', 'Cocok untuk draft awal'],
+  },
+  {
+    icon: Box,
+    title: 'Visualisasi 3D Realistis',
+    desc: 'Lihat proporsi ruangan dari berbagai sudut untuk mengurangi risiko salah beli.',
+    bullets: ['View perspektif penuh', 'Preview material dinding', 'Cek skala furniture'],
+  },
+  {
+    icon: Compass,
+    title: 'Mode Walk-through',
+    desc: 'Masuk ke ruangan virtual seperti simulasi agar keputusan lebih yakin.',
+    bullets: ['Sudut pandang orang berdiri', 'Rasa ruang lebih nyata', 'Lebih mudah validasi layout'],
+  },
+  {
+    icon: MessageCircle,
+    title: 'Follow-up WhatsApp Langsung',
+    desc: 'Setelah desain jadi, tim ILENA bantu review dan lanjutkan ke proses pemesanan.',
+    bullets: ['Konsultasi cepat', 'Bahas revisi desain', 'Lanjut order lebih terarah'],
+  },
+];
+
+const workflow = [
+  { step: '01', title: 'Atur Ruangan', desc: 'Masukkan ukuran dan tipe ruanganmu di planner.' },
+  { step: '02', title: 'Pilih Produk', desc: 'Drag furniture, atur posisi, lalu sesuaikan material.' },
+  { step: '03', title: 'Preview 3D', desc: 'Validasi tampilan di mode 3D dan walk-through.' },
+  { step: '04', title: 'Konsultasi WA', desc: 'Kirim desainmu dan dapatkan arahan sebelum checkout.' },
+];
+
+const highlights = [
+  { value: 'Gratis', label: 'Akses planner' },
+  { value: '2D + 3D', label: 'Mode visual' },
+  { value: 'Realtime', label: 'Estimasi total' },
+  { value: '1-on-1', label: 'Bantuan via WA' },
 ];
 
 const testimonials = [
   {
     name: 'Rina A.',
     location: 'Jakarta Selatan',
-    text: 'Awalnya iseng coba, tapi ternyata bisa lihat sofanya dari semua sisi dalam 3D. Akhirnya pesan langsung, hasilnya persis seperti yang dirancang.',
-    color: '#d4956b',
+    text: 'Saya jadi berani order karena bisa cek ukuran sofa dulu di 3D. Hasil akhirnya mirip banget dengan simulasi.',
   },
   {
     name: 'Bagas P.',
     location: 'Bandung',
-    text: 'Ngebantu banget buat ngecek ukuran sebelum beli. Tim WA-nya juga responsif, langsung kasih saran kombinasi material yang cocok.',
-    color: '#a86339',
+    text: 'Paling membantu saat bingung kombinasi warna dinding dan furniture. Tinggal share desain ke tim lewat WhatsApp.',
+  },
+  {
+    name: 'Maya L.',
+    location: 'Surabaya',
+    text: 'Walk-through bikin saya paham alur ruangnya. Revisi jadi lebih cepat dan keputusan beli lebih yakin.',
   },
 ];
 
@@ -100,213 +103,249 @@ export default function IklanPage() {
   const [waNumber, setWaNumber] = useState('');
 
   useEffect(() => {
-    api.get('/api/wallpapers/settings/whatsapp')
+    api
+      .get('/api/wallpapers/settings/whatsapp')
       .then((r) => setWaNumber(r.data.whatsapp_number || ''))
       .catch(() => {});
   }, []);
 
-  const waText = encodeURIComponent(
-    'Halo ILENA, saya tertarik untuk konsultasi desain ruangan saya. Bisa minta info lebih lanjut?'
-  );
-  const waUrl = waNumber ? `https://wa.me/${waNumber.replace(/[^0-9]/g, '')}?text=${waText}` : '#';
+  const waUrl = useMemo(() => {
+    if (!waNumber) return '#';
+    const text = encodeURIComponent(
+      'Halo ILENA, saya mau konsultasi desain ruangan. Bisa bantu review layout saya?'
+    );
+    return `https://wa.me/${waNumber.replace(/[^0-9]/g, '')}?text=${text}`;
+  }, [waNumber]);
+
+  const waDisabled = waUrl === '#';
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md border-b border-stone-100">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/iklan" className="flex flex-col leading-none">
-            <span className="font-display text-lg font-semibold text-stone-900 tracking-wide">
+    <div className="min-h-screen bg-stone-50 text-stone-900">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-stone-200/80 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
+          <Link href="/iklan" className="leading-none">
+            <p className="font-display text-lg font-semibold tracking-wide">
               ILENA <span className="text-warm-500">INTERIOR</span>
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-stone-400 mt-1">
-              Modern · Estetik · Premium
-            </span>
+            </p>
+            <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-stone-400">
+              Visual Planner Experience
+            </p>
           </Link>
-          {/* CTA desain disembunyikan sementara — akan diarahkan ke unduh APK setelah rilis Play Store */}
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <section className="relative pt-28 md:pt-36 pb-16 px-6">
-        <div className="absolute inset-0 -z-10 pointer-events-none">
-          <div className="absolute top-20 -left-32 w-96 h-96 bg-warm-100 rounded-full blur-3xl opacity-70" />
-          <div className="absolute top-40 -right-20 w-96 h-96 bg-stone-200 rounded-full blur-3xl opacity-60" />
-        </div>
-
-        <div className="max-w-5xl mx-auto text-center mb-8">
-          <span className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase tracking-widest px-4 py-1.5 rounded-full border border-emerald-100">
-            <Sparkles size={14} /> Gratis · Tanpa Akun · Konsultasi WA Aktif
-          </span>
-        </div>
-
-        <div className="max-w-5xl mx-auto text-center">
-          <h1 className="font-display text-5xl md:text-7xl font-bold text-stone-900 leading-[1.05] mb-6">
-            Bikin Ruangan Impianmu,
-            <br />
-            <span className="text-warm-500 italic">Tanpa Pusing Desain</span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-stone-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Drag & drop furniture asli ILENA ke denah ruanganmu, lihat hasilnya dalam 3D,
-            lalu chat tim kami via WhatsApp untuk lanjut order.{' '}
-            <span className="font-semibold text-stone-800">Semua gratis, langsung di browser.</span>
-          </p>
-
-          <div className="flex items-center justify-center gap-3 flex-wrap mb-6">
-            {/* CTA desain disembunyikan sementara — akan diarahkan ke unduh APK setelah rilis Play Store */}
+          <div className="hidden items-center gap-2 sm:flex">
+            <Link
+              href="/planner"
+              className="inline-flex items-center gap-1 rounded-lg border border-stone-300 px-3 py-2 text-xs font-medium text-stone-700 transition hover:border-stone-500 hover:text-stone-900"
+            >
+              Coba Planner <ArrowRight size={14} />
+            </Link>
             <a
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-emerald-600 text-white font-medium px-8 py-4 rounded-xl hover:bg-emerald-700 transition-all text-base shadow-lg shadow-emerald-200/50"
+              className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white transition ${
+                waDisabled ? 'bg-stone-400 pointer-events-none' : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
-              <MessageCircle size={18} /> Konsultasi WhatsApp
+              <MessageCircle size={14} /> Konsultasi
             </a>
           </div>
+        </div>
+      </nav>
 
-          <div className="flex items-center justify-center gap-6 text-xs text-stone-500 flex-wrap">
-            <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500" /> Tanpa Download</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500" /> Tanpa Akun</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500" /> Furniture Asli</span>
-          </div>
+      <section className="relative overflow-hidden px-5 pb-16 pt-28 md:px-8 md:pt-36">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute -left-20 top-16 h-72 w-72 rounded-full bg-warm-200/70 blur-3xl" />
+          <div className="absolute -right-16 top-28 h-80 w-80 rounded-full bg-stone-300/60 blur-3xl" />
         </div>
 
-        {/* Hero visual */}
-        <div className="max-w-5xl mx-auto mt-14">
-          <div className="relative">
-            <div className="absolute inset-0 -m-4 bg-gradient-to-br from-warm-100 via-stone-100 to-stone-200 rounded-3xl blur-2xl opacity-60" />
-            <div className="relative bg-white rounded-3xl border border-stone-200 shadow-2xl shadow-stone-300/40 overflow-hidden aspect-video">
-              <div className="absolute inset-0 bg-gradient-to-br from-stone-100 via-warm-50 to-stone-200 flex items-center justify-center">
-                <div className="text-center text-stone-400">
-                  <Sofa size={80} strokeWidth={1} className="mx-auto mb-4 text-stone-300" />
-                  <p className="font-display text-2xl text-stone-500 mb-1">Preview Ruanganmu</p>
-                  <p className="text-sm text-stone-400">2D · 3D · Walk-through</p>
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-700">
+              <Sparkles size={13} /> Gratis, langsung di browser
+            </span>
+            <h1 className="mt-5 font-display text-4xl font-bold leading-tight md:text-6xl">
+              Desain Ruangan Lebih
+              <span className="ml-2 italic text-warm-500">Yakin</span>,
+              <br />
+              Sebelum Kamu Checkout
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-stone-600 md:text-lg">
+              ILENA Planner membantumu menyusun layout, mencoba furniture asli, dan melihat hasil
+              dalam 3D. Setelah itu, tim kami lanjut bantu via WhatsApp sampai siap order.
+            </p>
+
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <Link
+                href="/planner"
+                className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-stone-700"
+              >
+                Mulai Desain Sekarang <ArrowRight size={16} />
+              </Link>
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-white transition ${
+                  waDisabled ? 'bg-stone-400 pointer-events-none' : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                <MessageCircle size={16} /> Konsultasi via WhatsApp
+              </a>
+            </div>
+
+            <div className="mt-8 grid max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
+              {highlights.map((h) => (
+                <div key={h.label} className="rounded-xl border border-stone-200 bg-white px-3 py-3 text-center">
+                  <p className="text-sm font-semibold text-stone-900">{h.value}</p>
+                  <p className="mt-1 text-[11px] text-stone-500">{h.label}</p>
                 </div>
-              </div>
-              <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-md border border-stone-100 flex items-center gap-1.5 text-xs font-medium text-stone-700">
-                <Layers size={14} className="text-warm-500" /> Mode 3D Aktif
-              </div>
-              <div className="absolute bottom-4 right-4 bg-stone-900 text-white px-3 py-1.5 rounded-lg shadow-lg text-xs font-medium">
-                Walk-through ready
+              ))}
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-warm-200/40 to-stone-300/40 blur-2xl" />
+            <div className="relative rounded-3xl border border-stone-200 bg-white p-4 shadow-2xl shadow-stone-300/40">
+              <div className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="rounded-full bg-stone-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+                    Live Planner
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                    <CheckCircle2 size={12} /> Real-time Estimation
+                  </span>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-stone-200 bg-white p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">Mode 2D</p>
+                    <p className="mt-2 text-sm font-medium">Atur denah & posisi furniture</p>
+                    <div className="mt-3 h-24 rounded-lg border border-dashed border-stone-300 bg-stone-50" />
+                  </div>
+                  <div className="rounded-xl border border-stone-200 bg-white p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">Mode 3D</p>
+                    <p className="mt-2 text-sm font-medium">Validasi skala dan suasana ruang</p>
+                    <div className="mt-3 flex h-24 items-center justify-center rounded-lg bg-gradient-to-br from-stone-200 to-stone-300 text-stone-500">
+                      <Sofa size={26} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <p className="text-xs font-semibold text-emerald-800">Estimasi Total: Rp 18.450.000</p>
+                  <p className="mt-1 text-[11px] text-emerald-700">
+                    Furniture + wallpaper dihitung otomatis saat kamu ubah layout.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Problem statement */}
-      <section className="px-6 py-20 bg-white border-y border-stone-100">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="text-xs font-semibold uppercase tracking-widest text-warm-600">Masalah Yang Sering Terjadi</span>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-stone-900 mt-2 mb-4">
-              Mau Desain Ruangan,
-              <br /><span className="italic text-stone-400">Tapi Bingung Mulai Dari Mana?</span>
+      <section className="border-y border-stone-200 bg-white px-5 py-16 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-warm-600">Problem di Lapangan</p>
+            <h2 className="mt-2 font-display text-3xl font-bold md:text-5xl">
+              Kenapa Banyak Orang
+              <span className="ml-2 italic text-stone-400">Tertahan</span> Saat Mau Upgrade Ruangan
             </h2>
-            <p className="text-stone-500 max-w-2xl mx-auto">
-              Tiga hal ini yang paling sering kami dengar dari pelanggan sebelum mencoba planner ILENA.
-            </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {problems.map((p, i) => (
-              <div key={i} className="bg-stone-50 rounded-2xl p-7 border border-stone-100">
-                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-5 border border-stone-200">
-                  <p.icon size={22} className="text-warm-600" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {painPoints.map((item) => (
+              <div key={item.title} className="rounded-2xl border border-stone-200 bg-stone-50 p-6">
+                <div className="mb-4 inline-flex rounded-xl border border-stone-200 bg-white p-2.5">
+                  <item.icon size={18} className="text-warm-600" />
                 </div>
-                <h3 className="font-display text-lg font-semibold text-stone-900 mb-2">{p.title}</h3>
-                <p className="text-sm text-stone-500 leading-relaxed">{p.desc}</p>
+                <h3 className="font-display text-xl font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Solution pillars */}
-      <section className="px-6 py-20">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="text-xs font-semibold uppercase tracking-widest text-warm-600">Solusi ILENA</span>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-stone-900 mt-2 mb-4">
-              Satu Halaman,
-              <br /><span className="italic text-stone-400">Tiga Kemudahan</span>
+      <section className="px-5 py-16 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-warm-600">Fitur Utama</p>
+            <h2 className="mt-2 font-display text-3xl font-bold md:text-5xl">
+              Planner yang Dibangun
+              <span className="ml-2 italic text-stone-400">Untuk Keputusan Nyata</span>
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {pillars.map((p, i) => (
-              <div key={i} className="group bg-white rounded-2xl p-7 border border-stone-100 hover:border-warm-200 hover:shadow-xl hover:shadow-warm-100/40 transition-all">
-                <div className="w-12 h-12 bg-stone-900 rounded-xl flex items-center justify-center mb-5 group-hover:bg-warm-500 transition-colors">
-                  <p.icon size={22} className="text-white" />
+          <div className="grid gap-5 md:grid-cols-2">
+            {productFeatures.map((feature) => (
+              <div key={feature.title} className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+                <div className="mb-4 inline-flex rounded-xl bg-stone-900 p-2.5 text-white">
+                  <feature.icon size={18} />
                 </div>
-                <h3 className="font-display text-xl font-semibold text-stone-900 mb-2">{p.title}</h3>
-                <p className="text-stone-500 leading-relaxed">{p.desc}</p>
+                <h3 className="font-display text-2xl font-semibold">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600">{feature.desc}</p>
+                <ul className="mt-4 space-y-1.5">
+                  {feature.bullets.map((bullet) => (
+                    <li key={bullet} className="flex items-center gap-2 text-sm text-stone-700">
+                      <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Mode showcase */}
-      <section className="px-6 py-20 bg-gradient-to-b from-stone-50 to-warm-50/40">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <span className="text-xs font-semibold uppercase tracking-widest text-warm-600">Tiga Cara Lihat Ruanganmu</span>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-stone-900 mt-2 mb-4">
-              Dari Denah ke <span className="italic text-stone-400">Walk-through</span>
+      <section className="bg-stone-900 px-5 py-16 text-white md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-warm-300">Alur Penggunaan</p>
+            <h2 className="mt-2 font-display text-3xl font-bold md:text-5xl">
+              Dari Ide ke Order
+              <span className="ml-2 italic text-warm-300">Tanpa Ribet</span>
             </h2>
-            <p className="text-stone-500 max-w-xl mx-auto">
-              Mulai dari layout sederhana sampai jalan-jalan virtual di ruangan impianmu — semua dalam satu tool.
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {modes.map((m, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-xl transition-shadow overflow-hidden flex flex-col">
-                <div className="aspect-[4/3] bg-gradient-to-br from-stone-100 via-warm-50 to-stone-200 flex items-center justify-center relative">
-                  <m.icon size={56} strokeWidth={1} className="text-stone-300" />
-                  <span className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-1 rounded-full shadow-sm border border-stone-100 text-[11px] font-semibold uppercase tracking-widest text-warm-600">
-                    {m.badge}
-                  </span>
-                </div>
-                <div className="p-6 flex flex-col flex-1">
-                  <h3 className="font-display text-xl font-semibold text-stone-900 mb-2">{m.title}</h3>
-                  <p className="text-sm text-stone-500 leading-relaxed mb-4">{m.desc}</p>
-                  <ul className="space-y-1.5 mb-5">
-                    {m.bullets.map((b, j) => (
-                      <li key={j} className="flex items-center gap-2 text-sm text-stone-600">
-                        <CheckCircle2 size={14} className="text-emerald-500 shrink-0" /> {b}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+          <div className="grid gap-4 md:grid-cols-4">
+            {workflow.map((item) => (
+              <div key={item.step} className="rounded-2xl border border-stone-700 bg-stone-800 p-5">
+                <p className="text-xs font-semibold tracking-widest text-warm-300">{item.step}</p>
+                <h3 className="mt-2 text-lg font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm text-stone-300">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="px-6 py-20 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="text-xs font-semibold uppercase tracking-widest text-warm-600">Kata Pelanggan</span>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-stone-900 mt-2">
-              Mereka Sudah <span className="italic text-stone-400">Membuktikannya</span>
+      <section className="bg-white px-5 py-16 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-warm-600">Kepercayaan Pelanggan</p>
+            <h2 className="mt-2 font-display text-3xl font-bold md:text-5xl">
+              Pengguna Merasa
+              <span className="ml-2 italic text-stone-400">Lebih Pasti</span> Sebelum Beli
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={i} className="bg-stone-50 rounded-2xl p-7 border border-stone-100">
-                <Quote size={28} className="text-warm-300 mb-3" />
-                <p className="text-stone-700 leading-relaxed mb-5">&ldquo;{t.text}&rdquo;</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+          <div className="grid gap-5 md:grid-cols-3">
+            {testimonials.map((t) => (
+              <div key={t.name} className="rounded-2xl border border-stone-200 bg-stone-50 p-6">
+                <Quote size={22} className="text-warm-400" />
+                <p className="mt-3 text-sm leading-relaxed text-stone-700">&ldquo;{t.text}&rdquo;</p>
+                <div className="mt-5 flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-stone-900 text-sm">{t.name}</p>
+                    <p className="text-sm font-semibold text-stone-900">{t.name}</p>
                     <p className="text-xs text-stone-500">{t.location}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-500">
+                    <Star size={14} fill="currentColor" />
+                    <Star size={14} fill="currentColor" />
+                    <Star size={14} fill="currentColor" />
+                    <Star size={14} fill="currentColor" />
+                    <Star size={14} fill="currentColor" />
                   </div>
                 </div>
               </div>
@@ -315,63 +354,77 @@ export default function IklanPage() {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="px-6 py-24 bg-stone-900 relative overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-warm-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="max-w-3xl mx-auto text-center relative">
-          <Sparkles size={28} className="mx-auto text-warm-400 mb-5" />
-          <h2 className="font-display text-4xl md:text-6xl font-bold text-white mb-5 leading-tight">
-            Jangan Tunggu Sampai
+      <section className="relative overflow-hidden bg-gradient-to-b from-stone-100 to-warm-50 px-5 py-20 md:px-8">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-warm-200/40 blur-3xl" />
+        <div className="relative mx-auto max-w-4xl text-center">
+          <Sparkles size={24} className="mx-auto text-warm-500" />
+          <h2 className="mt-4 font-display text-4xl font-bold leading-tight md:text-6xl">
+            Siap Lihat Ruanganmu
             <br />
-            <span className="text-warm-400 italic">Furniture Salah Beli</span>
+            <span className="italic text-warm-500">Sebelum Ambil Keputusan?</span>
           </h2>
-          <p className="text-stone-300 mb-10 text-lg max-w-xl mx-auto">
-            Rancang dulu, baru pesan. Mulai gratis sekarang atau chat tim ILENA langsung di WhatsApp.
+          <p className="mx-auto mt-5 max-w-2xl text-base text-stone-600 md:text-lg">
+            Coba planner gratis untuk menyusun layout, lalu lanjut konsultasi agar rekomendasinya
+            sesuai kebutuhan ruang dan budgetmu.
           </p>
-          <div className="flex items-center justify-center gap-3 flex-wrap">
-            {/* CTA desain disembunyikan sementara — akan diarahkan ke unduh APK setelah rilis Play Store */}
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/planner"
+              className="inline-flex items-center gap-2 rounded-xl bg-stone-900 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-stone-700"
+            >
+              Coba Planner Gratis <ArrowRight size={16} />
+            </Link>
             <a
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-emerald-600 text-white font-semibold px-8 py-4 rounded-xl hover:bg-emerald-500 transition-all hover:scale-105 shadow-xl"
+              className={`inline-flex items-center gap-2 rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition ${
+                waDisabled ? 'bg-stone-400 pointer-events-none' : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
             >
-              <MessageCircle size={18} /> Chat WhatsApp
+              <MessageCircle size={16} /> Chat WhatsApp
             </a>
           </div>
 
-          <div className="flex items-center justify-center gap-6 text-xs text-stone-400 mt-8 flex-wrap">
-            <span className="flex items-center gap-1.5"><Clock size={14} /> Respon cepat</span>
-            <span className="flex items-center gap-1.5"><ShieldCheck size={14} /> Produk berkualitas</span>
-            <span className="flex items-center gap-1.5"><Smile size={14} /> Tanpa biaya tersembunyi</span>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-5 text-xs text-stone-500">
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 size={14} className="text-stone-700" /> Respons cepat
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-stone-700" /> Produk terkurasi
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Users size={14} className="text-stone-700" /> Bantuan tim ILENA
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Wand2 size={14} className="text-stone-700" /> Simulasi lebih realistis
+            </span>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-stone-950 px-6 py-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-          <span className="font-display text-base font-semibold text-white tracking-wide">
-            ILENA INTERIOR
-          </span>
+      <footer className="bg-stone-950 px-5 py-7 md:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 md:flex-row">
+          <p className="font-display text-base font-semibold text-white tracking-wide">ILENA INTERIOR</p>
           <p className="text-xs text-stone-500">
-            © {new Date().getFullYear()} ILENA INTERIOR — Modern · Estetik · Premium
+            © {new Date().getFullYear()} ILENA INTERIOR. Desain lebih yakin, beli lebih tenang.
           </p>
         </div>
       </footer>
 
-      {/* Floating WhatsApp */}
       <a
         href={waUrl}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Chat WhatsApp"
-        className="fixed bottom-6 right-6 z-50 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-4 shadow-2xl shadow-emerald-500/40 hover:scale-110 transition-all flex items-center gap-2 group"
+        className={`fixed bottom-5 right-5 z-50 rounded-full p-4 text-white shadow-2xl transition hover:scale-105 ${
+          waDisabled
+            ? 'bg-stone-400 pointer-events-none'
+            : 'bg-emerald-600 shadow-emerald-500/30 hover:bg-emerald-700'
+        }`}
       >
-        <MessageCircle size={24} />
-        <span className="hidden group-hover:inline pr-2 font-medium text-sm whitespace-nowrap">
-          Chat sekarang
-        </span>
+        <MessageCircle size={22} />
       </a>
     </div>
   );
