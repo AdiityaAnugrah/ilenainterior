@@ -99,14 +99,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Main */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Top Bar with Notification Bell */}
           <div className="bg-stone-900 border-b border-stone-800 px-6 py-3 flex items-center justify-end">
             <NotificationBell />
           </div>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 min-h-0 overflow-auto">
             {children}
           </main>
         </div>

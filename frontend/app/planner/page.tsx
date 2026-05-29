@@ -77,9 +77,9 @@ function PlannerContent() {
   }, []);
 
   return (
-    <div className="h-dvh flex flex-col overflow-hidden bg-stone-50">
+    <div className="h-dvh min-h-0 flex flex-col overflow-hidden bg-stone-50">
       <WizardBar />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {currentStep === 1 && <Step1Room />}
         {currentStep === 2 && <Step3Material />}
         {currentStep === 3 && <EditorLayout />}

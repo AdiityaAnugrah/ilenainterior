@@ -111,7 +111,7 @@ export default function IklanPage() {
   const waUrl = waNumber ? `https://wa.me/${waNumber.replace(/[^0-9]/g, '')}?text=${waText}` : '#';
 
   return (
-    <div className="min-h-screen bg-stone-50 overflow-hidden">
+    <div className="min-h-screen bg-stone-50">
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-md border-b border-stone-100">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">

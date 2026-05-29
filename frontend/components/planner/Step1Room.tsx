@@ -40,9 +40,9 @@ export default function Step1Room() {
   const previewD = Math.round(roomConfig.depth * GRID_PX);
 
   return (
-    <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
+    <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
       {/* Left panel — Form (di HP: full-width, lalu denah di bawahnya) */}
-      <div className="w-full md:w-72 flex-shrink-0 bg-white md:border-r border-stone-200 flex flex-col md:overflow-y-auto">
+      <div className="w-full md:w-72 flex-shrink-0 bg-white md:border-r border-stone-200 flex flex-col min-h-0 md:overflow-y-auto">
         <div className="p-6 flex flex-col gap-6 flex-1">
           <div>
             <h2 className="text-lg font-semibold text-stone-800 mb-1">Atur Ukuran Ruangan</h2>

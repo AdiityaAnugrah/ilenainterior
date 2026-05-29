@@ -69,7 +69,7 @@ export default function EditorLayout() {
   }, []);
 
   const canvas = (
-    <div className="flex-1 flex overflow-hidden">
+    <div className="flex-1 min-h-0 flex overflow-hidden">
       {viewMode === '2d' && (
         <Canvas2D
           pendingProduct={pendingProduct}
@@ -85,7 +85,7 @@ export default function EditorLayout() {
   if (isMobile) {
     const propsOpen = viewMode !== 'walk' && !!selectedItemId;
     return (
-      <div className="relative flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
         {canvas}
 
         {/* FAB buka katalog — hanya 2D, dan disembunyikan saat sheet properti aktif */}
@@ -102,9 +102,9 @@ export default function EditorLayout() {
         {viewMode === '2d' && catalogOpen && (
           <div className="absolute inset-0 z-30 flex flex-col justify-end">
             <div className="absolute inset-0 bg-black/30" onClick={() => setCatalogOpen(false)} />
-            <div className="relative bg-white rounded-t-2xl shadow-2xl h-[72%] flex flex-col animate-slide-up overflow-hidden pb-safe">
+            <div className="relative bg-white rounded-t-2xl shadow-2xl h-[72%] min-h-0 flex flex-col animate-slide-up overflow-hidden pb-safe">
               <SheetHeader title="Katalog Furniture" onClose={() => setCatalogOpen(false)} />
-              <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 min-h-0 flex overflow-hidden">
                 <CatalogPanel onDragStart={handleDragStart} onAddProduct={handleAddProduct} />
               </div>
             </div>
@@ -114,9 +114,9 @@ export default function EditorLayout() {
         {/* Bottom-sheet properti — muncul saat item dipilih */}
         {propsOpen && (
           <div className="absolute inset-x-0 bottom-0 z-20">
-            <div className="bg-white rounded-t-2xl shadow-2xl max-h-[60vh] flex flex-col animate-slide-up overflow-hidden pb-safe">
+            <div className="bg-white rounded-t-2xl shadow-2xl max-h-[60vh] min-h-0 flex flex-col animate-slide-up overflow-hidden pb-safe">
               <SheetHeader title="Properti Furniture" onClose={() => setSelectedItem(null)} />
-              <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 min-h-0 flex overflow-hidden">
                 <PropertiesPanel onNavigateToResult={() => setCurrentStep(4)} />
               </div>
             </div>
@@ -128,7 +128,7 @@ export default function EditorLayout() {
 
   // ── Layout desktop: 3 panel berdampingan ──────────────────────────────────
   return (
-    <div className="relative flex flex-1 overflow-hidden">
+    <div className="relative flex flex-1 min-h-0 overflow-hidden">
       {/* Katalog hanya tampil di 2D mode — di 3D/walk tersembunyi untuk max ruang */}
       {viewMode === '2d' && (
         <CatalogPanel onDragStart={handleDragStart} onAddProduct={handleAddProduct} />

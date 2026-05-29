@@ -56,7 +56,7 @@ export default function CatalogPanel({ onDragStart, onAddProduct }: CatalogPanel
   }, [search, category]);
 
   return (
-    <div className="w-full md:w-72 h-full shrink-0 bg-white md:border-r border-stone-200 flex flex-col overflow-hidden">
+    <div className="w-full md:w-72 h-full min-h-0 shrink-0 bg-white md:border-r border-stone-200 flex flex-col overflow-hidden">
       {/* Search */}
       <div className="p-3 border-b border-stone-100">
         <div className="relative">
@@ -94,7 +94,7 @@ export default function CatalogPanel({ onDragStart, onAddProduct }: CatalogPanel
       </div>
 
       {/* Product grid */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2">
         {loading ? (
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
