@@ -409,7 +409,7 @@ export default function IklanPage() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 md:flex-row">
           <p className="font-display text-base font-semibold text-white tracking-wide">ILENA INTERIOR</p>
           <p className="text-xs text-stone-500">
-            © {new Date().getFullYear()} ILENA INTERIOR. Desain lebih yakin, beli lebih tenang.
+            (c) {new Date().getFullYear()} ILENA INTERIOR. Desain lebih yakin, beli lebih tenang.
           </p>
         </div>
       </footer>
