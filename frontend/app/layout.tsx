@@ -79,14 +79,29 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 fbq('init', '873353055789012');
 fbq('track', 'PageView');`;
 
+const googleTagManagerScript = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-WDX5G7H5');`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id" className={`${inter.variable} ${playfair.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: swCleanupScript }} />
+        <script dangerouslySetInnerHTML={{ __html: googleTagManagerScript }} />
         <script dangerouslySetInnerHTML={{ __html: metaPixelScript }} />
       </head>
       <body className="font-sans bg-stone-50 text-stone-900 antialiased">
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-WDX5G7H5"
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
         <noscript>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
