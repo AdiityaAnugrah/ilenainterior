@@ -101,21 +101,23 @@ const testimonials = [
 
 export default function IklanPage() {
   const [waNumber, setWaNumber] = useState('');
+  const [waMessage, setWaMessage] = useState('Halo Ilena, mau tanya tanya koleksinya.');
 
   useEffect(() => {
     api
       .get('/api/wallpapers/settings/whatsapp')
-      .then((r) => setWaNumber(r.data.whatsapp_number || ''))
+      .then((r) => {
+        setWaNumber(r.data.whatsapp_number || '');
+        setWaMessage(r.data.whatsapp_message || 'Halo Ilena, mau tanya tanya koleksinya.');
+      })
       .catch(() => {});
   }, []);
 
   const waUrl = useMemo(() => {
     if (!waNumber) return '#';
-    const text = encodeURIComponent(
-      'Halo ILENA, saya mau konsultasi desain ruangan. Bisa bantu review layout saya?'
-    );
+    const text = encodeURIComponent(waMessage || 'Halo Ilena, mau tanya tanya koleksinya.');
     return `https://wa.me/${waNumber.replace(/[^0-9]/g, '')}?text=${text}`;
-  }, [waNumber]);
+  }, [waNumber, waMessage]);
 
   const waDisabled = waUrl === '#';
 

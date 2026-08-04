@@ -80,13 +80,58 @@ router.get('/:id', cacheMiddleware(300000), async (req, res) => { // 5 minutes c
   }
 });
 
-// GET settings (public — only whatsapp_number)
+// GET WhatsApp settings (public)
 router.get('/settings/whatsapp', async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const [rows] = await conn.query("SELECT `value` FROM settings WHERE `key` = 'whatsapp_number'");
+    const [rows] = await conn.query(
+      "SELECT `key`, `value` FROM settings WHERE `key` IN ('whatsapp_number', 'whatsapp_message')"
+    );
+    const settings = {};
+    rows.forEach((row) => {
+      settings[row.key] = row.value || '';
+    });
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    res.json({ whatsapp_number: rows[0]?.value || '' });
+    res.json({
+      whatsapp_number: settings.whatsapp_number || '',
+      whatsapp_message: settings.whatsapp_message || 'Halo Ilena, mau tanya tanya koleksinya.',
+    });
+  } finally {
+    conn.release();
+  }
+});
+
+// GET public settings used by the storefront shell.
+// Only expose non-secret IDs needed by browser-side marketing pixels.
+router.get('/settings/public', async (req, res) => {
+  const allowedKeys = [
+    'whatsapp_number',
+    'whatsapp_message',
+    'google_tag_manager_id',
+    'google_analytics_id',
+    'tiktok_pixel_id',
+    'meta_pixel_id',
+  ];
+
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.query(
+      'SELECT `key`, `value` FROM settings WHERE `key` IN (?)',
+      [allowedKeys]
+    );
+    const settings = {};
+    rows.forEach((row) => {
+      settings[row.key] = row.value || '';
+    });
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.json({
+      whatsapp_number: settings.whatsapp_number || '',
+      whatsapp_message: settings.whatsapp_message || 'Halo Ilena, mau tanya tanya koleksinya.',
+      google_tag_manager_id: settings.google_tag_manager_id || '',
+      google_analytics_id: settings.google_analytics_id || '',
+      tiktok_pixel_id: settings.tiktok_pixel_id || '',
+      meta_pixel_id: settings.meta_pixel_id || '',
+    });
   } finally {
     conn.release();
   }

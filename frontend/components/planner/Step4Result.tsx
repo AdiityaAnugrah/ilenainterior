@@ -18,14 +18,18 @@ const WALL_LABELS: Record<WallSide, string> = {
 };
 
 export default function Step4Result() {
-  const { items, roomConfig, setCurrentStep, totalFurniturePrice, totalWallpaperPrice, totalPrice, projectName } = useEditorStore();
+  const { items, roomConfig, setCurrentStep, totalFurniturePrice, totalWallpaperPrice, totalPrice } = useEditorStore();
   const [mode, setMode] = useState<PreviewMode>('3d');
   const [copied, setCopied] = useState(false);
   const [waNumber, setWaNumber] = useState('');
+  const [waMessage, setWaMessage] = useState('Halo Ilena, mau tanya tanya koleksinya.');
 
   useEffect(() => {
     api.get('/api/wallpapers/settings/whatsapp')
-      .then(r => setWaNumber(r.data.whatsapp_number || ''))
+      .then(r => {
+        setWaNumber(r.data.whatsapp_number || '');
+        setWaMessage(r.data.whatsapp_message || 'Halo Ilena, mau tanya tanya koleksinya.');
+      })
       .catch(() => {});
   }, []);
 
@@ -69,56 +73,7 @@ export default function Step4Result() {
       return;
     }
 
-    // Get current project URL with guest token and project ID
-    const guestToken = localStorage.getItem('guest_token');
-    const { projectId } = useEditorStore.getState();
-    
-    let projectUrl = `${window.location.origin}/planner`;
-    if (projectId && guestToken) {
-      projectUrl += `?project_id=${projectId}&guest_token=${guestToken}`;
-    } else if (projectId) {
-      projectUrl += `?project_id=${projectId}`;
-    } else if (guestToken) {
-      projectUrl += `?guest_token=${guestToken}`;
-    }
-
-    // Build message
-    const lines: string[] = [];
-    lines.push('*ILENA INTERIOR — Konsultasi Desain*');
-    lines.push('');
-    lines.push(`*Proyek:* ${projectName}`);
-    lines.push(`*Ukuran Ruangan:* ${roomConfig.width} × ${roomConfig.depth} × ${roomConfig.height} m`);
-    lines.push(`*Tipe:* ${roomConfig.roomType.replace('_', ' ')}`);
-    lines.push('');
-
-    if (items.length > 0) {
-      lines.push(`*Furniture (${items.length} item):*`);
-      items.forEach((item, i) => {
-        lines.push(`  ${i + 1}. ${item.name} — ${formatPrice(item.price)}`);
-      });
-      lines.push(`  *Subtotal Furniture:* ${formatPrice(totalFurniturePrice())}`);
-      lines.push('');
-    }
-
-    const wallpapers = roomConfig.wallpapers ?? {};
-    const wpEntries = Object.entries(wallpapers).filter(([, v]) => v) as [WallSide, NonNullable<typeof wallpapers[WallSide]>][];
-    if (wpEntries.length > 0) {
-      lines.push('*Wallpaper:*');
-      wpEntries.forEach(([side, wp]) => {
-        const len = side === 'north' || side === 'south' ? roomConfig.width : roomConfig.depth;
-        lines.push(`  • Dinding ${WALL_LABELS[side]}: ${wp.name} — ${formatPrice(wp.price_per_meter)}/m × ${len}m = ${formatPrice(wp.price_per_meter * len)}`);
-      });
-      lines.push(`  *Subtotal Wallpaper:* ${formatPrice(totalWallpaperPrice())}`);
-      lines.push('');
-    }
-
-    lines.push(`*TOTAL ESTIMASI: ${formatPrice(totalPrice())}*`);
-    lines.push('');
-    lines.push(`*Lihat Desain:* ${projectUrl}`);
-    lines.push('');
-    lines.push('Saya tertarik dengan desain ini, mohon bantu follow up untuk pemesanan. Terima kasih!');
-
-    const text = encodeURIComponent(lines.join('\n'));
+    const text = encodeURIComponent(waMessage || 'Halo Ilena, mau tanya tanya koleksinya.');
     const waUrl = `https://wa.me/${waNumber.replace(/[^0-9]/g, '')}?text=${text}`;
     window.open(waUrl, '_blank');
     toast.success('Membuka WhatsApp...');

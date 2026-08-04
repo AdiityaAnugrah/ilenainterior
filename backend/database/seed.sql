@@ -81,5 +81,6 @@ INSERT INTO wallpapers (name, category, price_per_meter, texture_pattern, color,
 -- SEED: Default Settings
 -- ---------------------------------------------
 INSERT INTO settings (`key`, `value`) VALUES
-('whatsapp_number', '6281234567890')
+('whatsapp_number', '6281234567890'),
+('whatsapp_message', 'Halo Ilena, mau tanya tanya koleksinya.')
 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);
