@@ -141,6 +141,7 @@ export default function IklanPage() {
               Coba Planner <ArrowRight size={14} />
             </Link>
             <a
+              data-kbot-wa
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -185,6 +186,7 @@ export default function IklanPage() {
                 Mulai Desain Sekarang <ArrowRight size={16} />
               </Link>
               <a
+                data-kbot-wa
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -379,6 +381,7 @@ export default function IklanPage() {
               Coba Planner Gratis <ArrowRight size={16} />
             </Link>
             <a
+              data-kbot-wa
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -417,6 +420,7 @@ export default function IklanPage() {
       </footer>
 
       <a
+        data-kbot-wa
         href={waUrl}
         target="_blank"
         rel="noopener noreferrer"

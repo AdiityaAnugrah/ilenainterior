@@ -67,17 +67,11 @@ export default function Step4Result() {
     }
   };
 
-  const handleShareWA = () => {
-    if (!waNumber) {
-      toast.error('Nomor WhatsApp belum diatur. Hubungi admin.');
-      return;
-    }
-
-    const text = encodeURIComponent(waMessage || 'Halo Ilena, mau tanya tanya koleksinya.');
-    const waUrl = `https://wa.me/${waNumber.replace(/[^0-9]/g, '')}?text=${text}`;
-    window.open(waUrl, '_blank');
-    toast.success('Membuka WhatsApp...');
-  };
+  const waUrl = waNumber
+    ? `https://wa.me/${waNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+        waMessage || 'Halo Ilena, mau tanya tanya koleksinya.'
+      )}`
+    : '#';
 
   return (
     <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
@@ -198,14 +192,27 @@ export default function Step4Result() {
           </Button>
 
           {/* Share WA — primary CTA */}
-          <Button
-            size="md"
-            className="w-full gap-2"
+          <a
+            data-kbot-wa
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-disabled={!waNumber}
+            onClick={(e) => {
+              if (!waNumber) {
+                e.preventDefault();
+                toast.error('Nomor WhatsApp belum diatur. Hubungi admin.');
+              } else {
+                toast.success('Membuka WhatsApp...');
+              }
+            }}
+            className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 ${
+              waNumber ? 'hover:opacity-90' : 'pointer-events-none opacity-50 cursor-not-allowed'
+            }`}
             style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}
-            onClick={handleShareWA}
           >
             <MessageCircle size={15} /> Konsultasi via WhatsApp
-          </Button>
+          </a>
 
           <button
             onClick={() => setCurrentStep(3)}
