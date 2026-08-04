@@ -149,7 +149,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {gaId && <script dangerouslySetInnerHTML={{ __html: googleAnalyticsScript(gaId) }} />}
         {tiktokId && <script dangerouslySetInnerHTML={{ __html: tiktokPixelScript(tiktokId) }} />}
         {metaId && <script dangerouslySetInnerHTML={{ __html: metaPixelScript(metaId) }} />}
-        <script src="https://go.kreasibot.com/k.js" data-kreasibot="ilenafurniture" defer />
       </head>
       <body className="font-sans bg-stone-50 text-stone-900 antialiased">
         {gtmId && (

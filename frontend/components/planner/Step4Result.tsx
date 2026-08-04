@@ -193,8 +193,7 @@ export default function Step4Result() {
 
           {/* Share WA — primary CTA */}
           <a
-            data-kbot-wa
-            href={waUrl}
+                href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
             aria-disabled={!waNumber}
