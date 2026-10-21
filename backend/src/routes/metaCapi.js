@@ -1,7 +1,7 @@
 const express = require('express');
 const { randomUUID } = require('crypto');
 const pool = require('../config/db');
-const adminAuth = require('../middleware/adminAuth');
+const trackingAuth = require('../middleware/roleAuth')('admin', 'ads_analyst');
 const capi = require('../services/metaCapi');
 const router = express.Router();
 const admin = express.Router();
@@ -46,12 +46,13 @@ function eventHandler(sendEvent, eventName) { return async (req, res) => {
 router.post('/page-view', eventHandler(capi.sendPageView, 'PageView'));
 router.post('/lead', eventHandler(capi.sendLead, 'Lead'));
 
-admin.use(adminAuth);
+admin.use(trackingAuth);
 admin.get('/', async (req, res) => {
   const settings = await capi.getSettings();
   res.set('Cache-Control', 'no-store').json({ meta_pixel_id: settings.meta_pixel_id || '',
     meta_capi_enabled: settings.meta_capi_enabled === 'true', has_access_token: Boolean(settings.meta_capi_access_token),
-    meta_capi_test_event_code: settings.meta_capi_test_event_code || '' });
+    meta_capi_test_event_code: settings.meta_capi_test_event_code || '',
+    meta_page_view_enabled: settings.meta_page_view_enabled !== 'false', meta_lead_enabled: settings.meta_lead_enabled !== 'false' });
 });
 admin.put('/', async (req, res) => {
   let conn;
@@ -71,9 +72,12 @@ admin.put('/', async (req, res) => {
   finally { conn?.release(); }
 });
 admin.post('/test', async (req, res) => {
+  const eventName = req.body?.event_name || 'PageView';
+  if (!['PageView', 'Lead'].includes(eventName)) return res.status(400).json({ message: 'Pilih PageView atau Lead' });
   try {
     const settings = await capi.getSettings();
-    const result = await capi.sendPageView(settings, { eventId: `test_${randomUUID()}`,
+    const send = eventName === 'Lead' ? capi.sendLead : capi.sendPageView;
+    const result = await send(settings, { eventId: `test_${randomUUID()}`,
       sourceUrl: sourceUrl((process.env.CLIENT_URL || 'http://localhost:3000').split(',')[0].trim()),
       userAgent: req.get('user-agent'), ip: req.ip }, true);
     res.json({ message: 'Event uji diterima Meta. Periksa Test Events di Events Manager.', events_received: result.events_received });

@@ -7,5 +7,5 @@ export function adminLanding(role?: string) {
 }
 
 export function canAccessAdminPath(role: string | undefined, pathname: string) {
-  return role === 'admin' || (role === 'ads_analyst' && ['/admin/ads', '/admin/analytics'].includes(pathname));
+  return role === 'admin' || (role === 'ads_analyst' && ['/admin/ads', '/admin/analytics', '/admin/tracking'].includes(pathname));
 }

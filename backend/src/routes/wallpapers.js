@@ -111,6 +111,8 @@ router.get('/settings/public', async (req, res) => {
     'google_analytics_id',
     'tiktok_pixel_id',
     'meta_pixel_id',
+    'meta_page_view_enabled',
+    'meta_lead_enabled',
   ];
 
   const conn = await pool.getConnection();
@@ -130,6 +132,8 @@ router.get('/settings/public', async (req, res) => {
       google_analytics_id: settings.google_analytics_id || '',
       tiktok_pixel_id: settings.tiktok_pixel_id || '',
       meta_pixel_id: settings.meta_pixel_id || '',
+      meta_page_view_enabled: settings.meta_page_view_enabled === 'false' ? 'false' : 'true',
+      meta_lead_enabled: settings.meta_lead_enabled === 'false' ? 'false' : 'true',
     });
   } finally {
     conn.release();

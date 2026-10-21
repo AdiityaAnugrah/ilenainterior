@@ -13,6 +13,7 @@ import { Toaster } from 'react-hot-toast';
 const NAV = [
   { href: '/admin',            label: 'Dashboard',   icon: LayoutDashboard },
   { href: '/admin/ads', label: 'Analisa Iklan', icon: BarChart3 },
+  { href: '/admin/tracking', label: 'Event & Tracking', icon: Settings },
   { href: '/admin/analytics',  label: 'Analytics',   icon: BarChart3 },
   { href: '/admin/orders',     label: 'Pesanan',     icon: ShoppingCart },
   { href: '/admin/users',      label: 'User',        icon: Users },
@@ -61,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/" className="font-display text-white font-semibold tracking-wide text-base">
               ILENA INTERIOR
             </Link>
-            <p className="text-stone-500 text-xs mt-0.5">{user?.role === 'ads_analyst' ? 'Analis Iklan · Read-only' : 'Admin Panel'}</p>
+            <p className="text-stone-500 text-xs mt-0.5">{user?.role === 'ads_analyst' ? 'Analis & Pengelola Iklan' : 'Admin Panel'}</p>
           </div>
 
           <nav className="flex-1 p-3 space-y-1">

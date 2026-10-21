@@ -16,9 +16,11 @@ const base = 'https://ilenafurniture.net';
       assert.ok(data.summary); assert.ok(data.tracking); assert.equal(data.tracking.access_token, undefined);
     }
   }
-  for (const route of ['/api/admin/users', '/api/admin/orders', '/api/admin/settings', '/api/admin/meta-capi', '/api/admin/audit-logs', '/api/notifications']) {
+  for (const route of ['/api/admin/users', '/api/admin/orders', '/api/admin/settings', '/api/admin/audit-logs', '/api/notifications']) {
     assert.equal((await fetch(base + route, { headers })).status, 403, route);
   }
+  assert.equal((await fetch(base + '/api/admin/meta-capi', { headers })).status, 200);
+  assert.equal((await fetch(base + '/api/admin/marketing-settings', { headers })).status, 200);
   assert.equal((await fetch(base + '/api/admin/settings', { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' })).status, 403);
   assert.equal((await fetch(base + '/api/admin/ads-analytics')).status, 401);
   const home = await fetch(base); assert.equal(home.status, 200);

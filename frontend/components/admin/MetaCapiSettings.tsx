@@ -5,6 +5,9 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export function MetaCapiSettings() {
+  const [pageView, setPageView] = useState(true);
+  const [lead, setLead] = useState(true);
+  const [testEvent, setTestEvent] = useState('PageView');
   const [pixel, setPixel] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [token, setToken] = useState('');
@@ -17,6 +20,7 @@ export function MetaCapiSettings() {
   const [result, setResult] = useState('');
   useEffect(() => {
     api.get('/api/admin/meta-capi').then(({ data }) => {
+      setPageView(data.meta_page_view_enabled !== false); setLead(data.meta_lead_enabled !== false);
       setPixel(data.meta_pixel_id); setEnabled(data.meta_capi_enabled);
       setHasToken(data.has_access_token); setTestCode(data.meta_capi_test_event_code);
     }).catch(() => { setFailed(true); toast.error('Gagal memuat Meta CAPI'); }).finally(() => setLoading(false));
@@ -25,7 +29,7 @@ export function MetaCapiSettings() {
     setBusy(true); setResult('');
     try {
       const { data } = await api.put('/api/admin/meta-capi', { meta_pixel_id: pixel,
-        meta_capi_enabled: enabled, meta_capi_access_token: token, meta_capi_test_event_code: testCode, clear_token: clearToken });
+        meta_page_view_enabled: pageView, meta_lead_enabled: lead, meta_capi_enabled: enabled, meta_capi_access_token: token, meta_capi_test_event_code: testCode, clear_token: clearToken });
       setHasToken(data.has_access_token); setToken(''); setClearToken(false);
       toast.success('Meta CAPI disimpan. Pixel website diperbarui maksimal 60 detik.');
     } catch (error) {
@@ -35,7 +39,7 @@ export function MetaCapiSettings() {
   }
   async function test() {
     setBusy(true); setResult('');
-    try { const { data } = await api.post('/api/admin/meta-capi/test'); setResult(data.message); }
+    try { const { data } = await api.post('/api/admin/meta-capi/test', { event_name: testEvent }); setResult(data.message); }
     catch (error) { setResult((error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Event uji gagal dikirim'); }
     finally { setBusy(false); }
   }
@@ -43,9 +47,15 @@ export function MetaCapiSettings() {
   return (
     <section className="bg-white rounded-2xl border border-stone-100 p-6" aria-labelledby="meta-capi-title">
       <h2 id="meta-capi-title" className="text-sm font-semibold text-stone-800">Meta Conversions API (CAPI)</h2>
-      <p className="text-xs text-stone-500 mt-1 mb-4">Kirim PageView dari server dan Meta Pixel dengan event ID yang sama. Halaman admin dan autentikasi dikecualikan.</p>
+      <p className="text-xs text-stone-500 mt-1 mb-4">Kelola event PageView dan Lead klik WhatsApp dari server dan Meta Pixel dengan event ID yang sama. Halaman admin dan autentikasi dikecualikan.</p>
       {loading ? <p className="text-sm">Memuat konfigurasi...</p> : failed ? <p role="alert">Konfigurasi gagal dimuat. Muat ulang halaman.</p> : (
         <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
+          <div className="rounded-xl bg-stone-50 p-4 space-y-3">
+            <p className="text-sm font-semibold text-stone-800">Event Website</p>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={pageView} onChange={e => setPageView(e.target.checked)} />PageView — kunjungan halaman</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={lead} onChange={e => setLead(e.target.checked)} />Lead — klik konsultasi WhatsApp</label>
+            <p className="text-xs text-stone-600">Kontrol event berlaku untuk Pixel dan CAPI. WhatsApp tetap dapat dibuka saat event Lead dimatikan.</p>
+          </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />Aktifkan Meta CAPI</label>
           <div><label htmlFor="capi-pixel" className="block text-xs font-semibold mb-1.5">Meta Pixel / Dataset ID</label>
             <input id="capi-pixel" className={inputClass} value={pixel} onChange={e => setPixel(e.target.value)} inputMode="numeric" placeholder="873353055789012" />
@@ -57,6 +67,8 @@ export function MetaCapiSettings() {
           <div><label htmlFor="capi-test" className="block text-xs font-semibold mb-1.5">Test Event Code (opsional)</label>
             <input id="capi-test" className={inputClass} value={testCode} onChange={e => setTestCode(e.target.value)} placeholder="TEST12345" />
             <p className="text-xs text-stone-500 mt-1">Ambil dari Events Manager → Test Events. Hapus kode setelah pengujian agar event produksi dikirim normal.</p></div>
+          <div><label htmlFor="capi-test-event" className="block text-xs font-semibold mb-1.5">Event yang diuji</label>
+            <select id="capi-test-event" className={inputClass} value={testEvent} onChange={e => setTestEvent(e.target.value)}><option value="PageView">PageView</option><option value="Lead">Lead</option></select></div>
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={save} className="bg-stone-800 text-white rounded-xl px-4 py-2 text-sm">{busy ? 'Memproses...' : 'Simpan Meta CAPI'}</button>
             <button type="button" onClick={test} disabled={!hasToken || !testCode.trim()} className="border border-stone-300 rounded-xl px-4 py-2 text-sm disabled:opacity-50">Kirim Event Uji</button>

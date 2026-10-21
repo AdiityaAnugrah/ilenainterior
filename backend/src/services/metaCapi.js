@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-const KEYS = ['meta_pixel_id', 'meta_capi_enabled', 'meta_capi_access_token', 'meta_capi_test_event_code'];
+const KEYS = ['meta_pixel_id', 'meta_capi_enabled', 'meta_capi_access_token', 'meta_capi_test_event_code', 'meta_page_view_enabled', 'meta_lead_enabled'];
 async function getSettings() {
   const [rows] = await pool.query('SELECT `key`, `value` FROM settings WHERE `key` IN (?)', [KEYS]);
   return Object.fromEntries(rows.map(row => [row.key, row.value || '']));
@@ -16,10 +16,17 @@ function validateSettings(body, current) {
   if (testCode && !/^[A-Za-z0-9_-]{1,100}$/.test(testCode)) throw new Error('Test Event Code tidak valid');
   const accessToken = body.clear_token === true ? '' : token || current.meta_capi_access_token || '';
   if (body.meta_capi_enabled && (!pixel || !accessToken)) throw new Error('Pixel ID dan Access Token wajib diisi untuk mengaktifkan CAPI');
-  return { meta_pixel_id: pixel, meta_capi_enabled: body.meta_capi_enabled ? 'true' : 'false', meta_capi_access_token: accessToken, meta_capi_test_event_code: testCode };
+  const flags = {};
+  for (const key of ['meta_page_view_enabled', 'meta_lead_enabled']) {
+    if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new Error('Status event harus boolean');
+    flags[key] = body[key] === undefined ? (current[key] === 'false' ? 'false' : 'true') : String(body[key]);
+  }
+  return { meta_pixel_id: pixel, meta_capi_enabled: body.meta_capi_enabled ? 'true' : 'false', meta_capi_access_token: accessToken, meta_capi_test_event_code: testCode, ...flags };
 }
 
 async function sendEvent(eventName, settings, { eventId, sourceUrl, userAgent, ip, fbp, fbc }, test = false) {
+  const flag = eventName === 'Lead' ? 'meta_lead_enabled' : 'meta_page_view_enabled';
+  if (settings[flag] === 'false' && !test) return { skipped: true };
   if (settings.meta_capi_enabled !== 'true' && !test) return { skipped: true };
   if (!/^\d{6,30}$/.test(settings.meta_pixel_id || '') || !settings.meta_capi_access_token) throw new Error('Konfigurasi Meta CAPI belum lengkap');
   const userData = { client_user_agent: userAgent, client_ip_address: ip };
@@ -44,5 +51,5 @@ async function sendEvent(eventName, settings, { eventId, sourceUrl, userAgent, i
 }
 
 const sendPageView = (settings, event, test = false) => sendEvent('PageView', settings, event, test);
-const sendLead = (settings, event) => sendEvent('Lead', settings, event);
+const sendLead = (settings, event, test = false) => sendEvent('Lead', settings, event, test);
 module.exports = { KEYS, getSettings, validateSettings, sendPageView, sendLead };

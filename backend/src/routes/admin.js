@@ -26,6 +26,7 @@ const wallpapersCacheManager = new APICacheManager({
 
 router.use(adminAuditLog);
 router.use('/meta-capi', require('./metaCapi').admin);
+router.use('/marketing-settings', require('./marketingSettings'));
 
 // Cache invalidation middleware
 const invalidateProductsCache = (req, res, next) => {

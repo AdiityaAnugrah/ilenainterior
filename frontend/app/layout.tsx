@@ -19,6 +19,8 @@ type TrackingSettings = {
   google_analytics_id?: string;
   tiktok_pixel_id?: string;
   meta_pixel_id?: string;
+  meta_page_view_enabled?: string;
+  meta_lead_enabled?: string;
 };
 
 export const metadata: Metadata = {
@@ -148,7 +150,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             />
           </noscript>
         )}
-        {metaId && <MetaPageView pixelId={metaId} />}
+        {metaId && <MetaPageView pixelId={metaId} pageViewEnabled={settings.meta_page_view_enabled !== 'false'} leadEnabled={settings.meta_lead_enabled !== 'false'} />}
         <ServiceWorkerProvider>
           {children}
         </ServiceWorkerProvider>

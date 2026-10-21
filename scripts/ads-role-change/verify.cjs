@@ -49,10 +49,11 @@ const get = url => request(app).get(url).set('Authorization', 'Bearer ' + token)
   assert.equal(ads.body.days, 90); assert.ok(!JSON.stringify(ads.body).includes('NEVER_EXPOSE_TOKEN'));
   assert.equal(ads.body.tracking.pixel_id, '123456789');
   const sales = await get('/api/admin/analytics').expect(200); assert.deepEqual(sales.body.recent_orders, []);
-  for (const url of ['/api/admin/users', '/api/admin/orders', '/api/admin/products', '/api/admin/settings', '/api/admin/meta-capi', '/api/admin/audit-logs']) await get(url).expect(403);
-  for (const [method, url] of [['put','/api/admin/settings'], ['put','/api/admin/users/1/role'], ['post','/api/admin/meta-capi/test'], ['delete','/api/admin/products/1']]) {
+  for (const url of ['/api/admin/users', '/api/admin/orders', '/api/admin/products', '/api/admin/settings', '/api/admin/audit-logs']) await get(url).expect(403);
+  for (const [method, url] of [['put','/api/admin/settings'], ['put','/api/admin/users/1/role'], ['delete','/api/admin/products/1']]) {
     await request(app)[method](url).set('Authorization', 'Bearer ' + token).send({ role: 'admin' }).expect(403);
   }
+  await get('/api/admin/meta-capi').expect(200);
   status = 'blocked'; await get('/analytics-only').expect(403); await get('/api/admin/ads-analytics').expect(403);
   role = 'admin'; await get('/admin-only').expect(403);
   status = 'active'; role = 'user'; await get('/analytics-only').expect(403);

@@ -6,6 +6,7 @@ describe('Ads analyst access', () => {
     expect(canAccessAdmin('ads_analyst')).toBe(true);
     expect(canAccessAdminPath('ads_analyst', '/admin/ads')).toBe(true);
     expect(canAccessAdminPath('ads_analyst', '/admin/analytics')).toBe(true);
+    expect(canAccessAdminPath('ads_analyst', '/admin/tracking')).toBe(true);
     for (const path of ['/admin', '/admin/users', '/admin/orders/1', '/admin/settings', '/admin/ads/../settings']) expect(canAccessAdminPath('ads_analyst', path)).toBe(false);
   });
   it('retains full admin access and excludes customers and anonymous visitors', () => {
