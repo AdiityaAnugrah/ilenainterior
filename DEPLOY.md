@@ -71,3 +71,20 @@ Rollback to a specific commit:
 git checkout main
 ./deploy.sh
 ```
+
+## 6) Production backup
+
+Run manual backup from project root:
+
+```bash
+chmod +x scripts/backup-production.sh
+./scripts/backup-production.sh
+```
+
+Default output: `./backups`.
+
+Recommended cron, daily at 02:30 server time:
+
+```bash
+30 2 * * * cd /home/aditya/projects/ilenainterior && /bin/bash scripts/backup-production.sh >> backups/backup.log 2>&1
+```

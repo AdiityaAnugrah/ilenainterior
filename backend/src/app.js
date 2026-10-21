@@ -6,6 +6,8 @@ require('dotenv').config();
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -51,13 +53,31 @@ app.use('/api/orders',      require('./routes/orders'));
 app.use('/api/wallpapers',  require('./routes/wallpapers'));
 app.use('/api/admin',       require('./routes/admin'));
 app.use('/api/admin',       require('./routes/admin-import'));
+app.use('/api/meta',        require('./routes/metaCapi').router);
 app.use('/api/notifications', require('./routes/notifications'));
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'ILENA INTERIOR API' }));
+app.get('/api/health', (req, res) => res.json({
+  status: 'ok',
+  app: 'ILENA INTERIOR API',
+  uptime: Math.round(process.uptime()),
+  timestamp: new Date().toISOString(),
+}));
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({ message: err.message || 'Terjadi kesalahan server' });
+  const status = err.status || err.statusCode || 500;
+
+  // Malformed client JSON/body should return 400 without noisy stack traces.
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ message: 'JSON request body tidak valid' });
+  }
+
+  if (status >= 500) {
+    console.error(err.stack || err);
+  } else {
+    console.warn(`[Client Error] ${status} ${req.method} ${req.originalUrl}: ${err.message}`);
+  }
+
+  res.status(status).json({ message: err.message || 'Terjadi kesalahan server' });
 });
 
 module.exports = app;

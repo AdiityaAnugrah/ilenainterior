@@ -180,7 +180,7 @@ class NotificationService {
 
       // Insert all as read (use INSERT IGNORE to handle any race conditions)
       if (unreadNotifications.length > 0) {
-        const values = unreadNotifications.map(n => [n.id, userId]);
+        const values = unreadNotifications.map(n => [n.id, userId, new Date()]);
         await conn.query(
           `INSERT IGNORE INTO notification_reads (notification_id, user_id, read_at)
            VALUES ?`,

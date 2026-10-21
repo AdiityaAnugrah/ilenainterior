@@ -12,7 +12,7 @@ interface User {
   name: string;
   email: string;
   avatar: string | null;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'ads_analyst';
   status: 'active' | 'blocked';
   created_at: string;
   updated_at: string;
@@ -25,6 +25,7 @@ interface StatusCounts {
 }
 
 interface RoleCounts {
+  ads_analyst: number;
   user: number;
   admin: number;
 }
@@ -46,6 +47,7 @@ export default function AdminUsersPage() {
   const [roleCounts, setRoleCounts] = useState<RoleCounts>({
     user: 0,
     admin: 0,
+    ads_analyst: 0,
   });
 
   const limit = 30;
@@ -146,7 +148,7 @@ export default function AdminUsersPage() {
         <div className="mb-3">
           <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Role</p>
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {(['all', 'user', 'admin'] as const).map((role) => (
+            {(['all', 'user', 'admin', 'ads_analyst'] as const).map((role) => (
               <button
                 key={role}
                 onClick={() => {
@@ -159,7 +161,7 @@ export default function AdminUsersPage() {
                     : 'bg-stone-50 text-stone-600 hover:bg-stone-100'
                 }`}
               >
-                {role === 'all' ? 'Semua' : role === 'user' ? 'User' : 'Admin'}{' '}
+                {role === 'all' ? 'Semua' : role === 'user' ? 'User' : role === 'ads_analyst' ? 'Analis Iklan' : 'Admin'}{' '}
                 <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs ${
                   roleFilter === role ? 'bg-white/20' : 'bg-stone-200'
                 }`}>

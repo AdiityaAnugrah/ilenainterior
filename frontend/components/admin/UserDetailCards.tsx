@@ -5,7 +5,7 @@ interface UserProfile {
   name: string;
   email: string;
   avatar: string | null;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'ads_analyst';
   status: 'active' | 'blocked';
   created_at: string;
   updated_at: string;

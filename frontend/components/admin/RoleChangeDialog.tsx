@@ -3,9 +3,9 @@ import { X, AlertTriangle } from 'lucide-react';
 
 interface RoleChangeDialogProps {
   isOpen: boolean;
-  currentRole: 'user' | 'admin';
+  currentRole: 'user' | 'admin' | 'ads_analyst';
   userName: string;
-  onConfirm: (newRole: 'user' | 'admin') => void;
+  onConfirm: (newRole: 'user' | 'admin' | 'ads_analyst') => void;
   onCancel: () => void;
   loading?: boolean;
 }
@@ -18,7 +18,7 @@ export default function RoleChangeDialog({
   onCancel,
   loading = false,
 }: RoleChangeDialogProps) {
-  const [selectedRole, setSelectedRole] = useState<'user' | 'admin'>(currentRole);
+  const [selectedRole, setSelectedRole] = useState<'user' | 'admin' | 'ads_analyst'>(currentRole);
 
   if (!isOpen) return null;
 
@@ -61,13 +61,19 @@ export default function RoleChangeDialog({
 
         {/* Role selection */}
         <div className="space-y-3 mb-4">
+          <label className="flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer hover:bg-stone-50">
+            <input type="radio" name="role" value="ads_analyst" checked={selectedRole === 'ads_analyst'}
+              onChange={() => setSelectedRole('ads_analyst')} disabled={loading} />
+            <div><span className="font-medium text-stone-900">Analis Iklan</span>
+              <p className="text-xs text-stone-500 mt-1">Baca analisa iklan dan analytics penjualan saja.</p></div>
+          </label>
           <label className="flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors hover:bg-stone-50">
             <input
               type="radio"
               name="role"
               value="user"
               checked={selectedRole === 'user'}
-              onChange={(e) => setSelectedRole(e.target.value as 'user' | 'admin')}
+              onChange={(e) => setSelectedRole(e.target.value as 'user' | 'admin' | 'ads_analyst')}
               disabled={loading}
               className="w-4 h-4 text-blue-600"
             />
@@ -90,7 +96,7 @@ export default function RoleChangeDialog({
               name="role"
               value="admin"
               checked={selectedRole === 'admin'}
-              onChange={(e) => setSelectedRole(e.target.value as 'user' | 'admin')}
+              onChange={(e) => setSelectedRole(e.target.value as 'user' | 'admin' | 'ads_analyst')}
               disabled={loading}
               className="w-4 h-4 text-purple-600"
             />

@@ -1,10 +1,12 @@
 const router    = require('express').Router();
 const pool      = require('../config/db');
 const adminAuth = require('../middleware/adminAuth');
+const analyticsAuth = require('../middleware/roleAuth')('admin', 'ads_analyst');
 const upload    = require('../middleware/upload');
 const { optimizeUploadedAsset } = require('../middleware/upload');
 const path      = require('path');
 const fs        = require('fs');
+const adminAuditLog = require('../middleware/adminAuditLog');
 
 // Import cache managers from route files
 const APICacheManager = require('../cache/CacheManager');
@@ -21,6 +23,9 @@ const wallpapersCacheManager = new APICacheManager({
   maxSize: 200,
   enableStats: true,
 });
+
+router.use(adminAuditLog);
+router.use('/meta-capi', require('./metaCapi').admin);
 
 // Cache invalidation middleware
 const invalidateProductsCache = (req, res, next) => {
@@ -299,6 +304,137 @@ router.get('/stats', adminAuth, async (req, res) => {
     const [[{ totalWallpapers }]] = await conn.query('SELECT COUNT(*) as totalWallpapers FROM wallpapers');
     res.json({ totalProducts, totalOrders, totalUsers, totalRevenue, totalWallpapers });
   } finally { conn.release(); }
+});
+
+router.get('/ads-analytics', analyticsAuth, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 90);
+    const report = await require('../services/adsAnalytics').getReport(days);
+    const settings = await require('../services/metaCapi').getSettings();
+    res.json({ ...report, tracking: {
+      pixel_id: settings.meta_pixel_id || '', capi_enabled: settings.meta_capi_enabled === 'true',
+      has_access_token: Boolean(settings.meta_capi_access_token), test_mode: Boolean(settings.meta_capi_test_event_code),
+    } });
+  } catch { res.status(500).json({ message: 'Gagal memuat analisa iklan' }); }
+});
+
+router.get('/analytics', analyticsAuth, async (req, res) => {
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 7), 90);
+  const conn = await pool.getConnection();
+  try {
+    const [[summary]] = await conn.query(
+      `SELECT
+         COUNT(*) AS total_orders,
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS total_revenue,
+         COALESCE(AVG(CASE WHEN status != 'cancelled' THEN total END), 0) AS average_order_value,
+         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_orders,
+         SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paid_orders,
+         SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing_orders,
+         SUM(CASE WHEN status = 'shipped' THEN 1 ELSE 0 END) AS shipped_orders,
+         SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered_orders,
+         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_orders
+       FROM orders`
+    );
+
+    const [[today]] = await conn.query(
+      `SELECT
+         COUNT(*) AS orders_today,
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS revenue_today
+       FROM orders
+       WHERE DATE(created_at) = CURDATE()`
+    );
+
+    const [[last30Days]] = await conn.query(
+      `SELECT
+         COUNT(*) AS orders_30d,
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS revenue_30d
+       FROM orders
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`
+    );
+
+    const [daily] = await conn.query(
+      `SELECT
+         DATE_FORMAT(created_at, '%Y-%m-%d') AS day,
+         COUNT(*) AS orders,
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS revenue
+       FROM orders
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY DATE(created_at) ASC`,
+      [days - 1]
+    );
+
+    const [statusBreakdown] = await conn.query(
+      `SELECT status, COUNT(*) AS count, COALESCE(SUM(total), 0) AS revenue
+       FROM orders
+       GROUP BY status
+       ORDER BY count DESC`
+    );
+
+    const [topProducts] = await conn.query(
+      `SELECT
+         p.id,
+         p.name,
+         p.sku,
+         SUM(oi.quantity) AS quantity_sold,
+         COALESCE(SUM(oi.quantity * oi.price), 0) AS revenue
+       FROM order_items oi
+       JOIN products p ON p.id = oi.product_id
+       JOIN orders o ON o.id = oi.order_id
+       WHERE o.status != 'cancelled'
+       GROUP BY p.id, p.name, p.sku
+       ORDER BY quantity_sold DESC, revenue DESC
+       LIMIT 10`
+    );
+
+    const [recentOrders] = await conn.query(
+      `SELECT o.id, o.order_code, o.status, o.total, o.created_at, u.name AS customer_name
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       ORDER BY o.created_at DESC
+       LIMIT 8`
+    );
+
+    res.json({
+      summary: {
+        total_orders: Number(summary.total_orders || 0),
+        total_revenue: Number(summary.total_revenue || 0),
+        average_order_value: Number(summary.average_order_value || 0),
+        pending_orders: Number(summary.pending_orders || 0),
+        paid_orders: Number(summary.paid_orders || 0),
+        processing_orders: Number(summary.processing_orders || 0),
+        shipped_orders: Number(summary.shipped_orders || 0),
+        delivered_orders: Number(summary.delivered_orders || 0),
+        cancelled_orders: Number(summary.cancelled_orders || 0),
+        orders_today: Number(today.orders_today || 0),
+        revenue_today: Number(today.revenue_today || 0),
+        orders_30d: Number(last30Days.orders_30d || 0),
+        revenue_30d: Number(last30Days.revenue_30d || 0),
+      },
+      daily: daily.map(row => ({
+        day: row.day,
+        orders: Number(row.orders || 0),
+        revenue: Number(row.revenue || 0),
+      })),
+      status_breakdown: statusBreakdown.map(row => ({
+        status: row.status,
+        count: Number(row.count || 0),
+        revenue: Number(row.revenue || 0),
+      })),
+      top_products: topProducts.map(row => ({
+        ...row,
+        quantity_sold: Number(row.quantity_sold || 0),
+        revenue: Number(row.revenue || 0),
+      })),
+      recent_orders: (req.user.role === 'ads_analyst' ? [] : recentOrders).map(row => ({
+        ...row,
+        total: Number(row.total || 0),
+      })),
+    });
+  } finally {
+    conn.release();
+  }
 });
 
 // ─── WALLPAPERS ──────────────────────────────────────────────────────────────
@@ -1158,9 +1294,9 @@ router.put('/users/:id/role', adminAuth, async (req, res) => {
   const { role } = req.body;
 
   // Validate role value
-  if (!role || (role !== 'user' && role !== 'admin')) {
+  if (!['user', 'admin', 'ads_analyst'].includes(role)) {
     return res.status(400).json({ 
-      message: 'Role harus berupa "user" atau "admin"' 
+      message: 'Role harus berupa user, admin, atau ads_analyst' 
     });
   }
 
@@ -1267,6 +1403,7 @@ router.get('/users', adminAuth, async (req, res) => {
     const roleCounts = {
       user: 0,
       admin: 0,
+      ads_analyst: 0,
     };
     roleCountsResult.forEach(rc => {
       roleCounts[rc.role] = rc.count;
@@ -1475,13 +1612,38 @@ router.get('/users/:id', adminAuth, async (req, res) => {
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
 
+// GET recent admin audit logs
+router.get('/audit-logs', adminAuth, async (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 100, 200);
+  const conn = await pool.getConnection();
+  try {
+    await adminAuditLog.ensureAuditTable();
+    const [rows] = await conn.query(
+      `SELECT l.id, l.admin_id, u.name AS admin_name, u.email AS admin_email,
+              l.method, l.path, l.status_code, l.ip, l.user_agent,
+              l.request_body, l.created_at
+       FROM admin_audit_logs l
+       LEFT JOIN users u ON u.id = l.admin_id
+       ORDER BY l.created_at DESC
+       LIMIT ?`,
+      [limit]
+    );
+    res.json(rows.map(row => ({
+      ...row,
+      request_body: row.request_body ? JSON.parse(row.request_body) : null,
+    })));
+  } finally {
+    conn.release();
+  }
+});
+
 // GET all settings
 router.get('/settings', adminAuth, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const [rows] = await conn.query('SELECT * FROM settings');
     const settings = {};
-    rows.forEach(r => { settings[r.key] = r.value; });
+    rows.forEach(r => { if (r.key !== 'meta_capi_access_token') settings[r.key] = r.value; });
     res.json(settings);
   } finally { conn.release(); }
 });
@@ -1490,6 +1652,7 @@ router.get('/settings', adminAuth, async (req, res) => {
 router.put('/settings', adminAuth, async (req, res) => {
   const { key, value } = req.body;
   if (!key) return res.status(400).json({ message: 'Key wajib diisi' });
+  if (String(key).startsWith('meta_capi_')) return res.status(400).json({ message: 'Gunakan pengaturan khusus Meta CAPI' });
 
   const conn = await pool.getConnection();
   try {

@@ -17,7 +17,7 @@ interface User {
   name: string;
   email: string;
   avatar: string | null;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'ads_analyst';
   status: 'active' | 'blocked';
   created_at: string;
   updated_at: string;
@@ -146,7 +146,7 @@ export default function UserDetailPage() {
   };
 
   // Change role action
-  const handleChangeRole = async (newRole: 'user' | 'admin') => {
+  const handleChangeRole = async (newRole: 'user' | 'admin' | 'ads_analyst') => {
     setActionLoading(true);
     try {
       await api.put(`/api/admin/users/${userId}/role`, { role: newRole });

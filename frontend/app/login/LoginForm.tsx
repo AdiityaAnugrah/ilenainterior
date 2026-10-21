@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
+import { adminLanding } from '@/lib/adminAccess';
 import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginForm() {
@@ -22,7 +23,7 @@ export default function LoginForm() {
       await login(email, password);
       toast.success('Selamat datang kembali!');
       const updated = useAuthStore.getState().user;
-      router.push(updated?.role === 'admin' ? '/admin' : '/planner');
+      router.push(adminLanding(updated?.role));
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login gagal';
       toast.error(msg);

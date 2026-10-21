@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { LayoutDashboard, Package, LogOut, ChevronRight, Image as ImageIcon, Settings, ShoppingCart, Users } from 'lucide-react';
+import { LayoutDashboard, Package, LogOut, Image as ImageIcon, Settings, ShoppingCart, Users, ShieldCheck, BarChart3 } from 'lucide-react';
+import { canAccessAdmin, canAccessAdminPath, adminLanding } from '@/lib/adminAccess';
 import { cn } from '@/lib/utils';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import NotificationBell from '@/components/admin/NotificationBell';
@@ -11,10 +12,13 @@ import { Toaster } from 'react-hot-toast';
 
 const NAV = [
   { href: '/admin',            label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/admin/ads', label: 'Analisa Iklan', icon: BarChart3 },
+  { href: '/admin/analytics',  label: 'Analytics',   icon: BarChart3 },
   { href: '/admin/orders',     label: 'Pesanan',     icon: ShoppingCart },
   { href: '/admin/users',      label: 'User',        icon: Users },
   { href: '/admin/products',   label: 'Produk',      icon: Package },
   { href: '/admin/wallpapers', label: 'Wallpaper',   icon: ImageIcon },
+  { href: '/admin/audit-logs', label: 'Audit Log',   icon: ShieldCheck },
   { href: '/admin/settings',   label: 'Pengaturan',  icon: Settings },
 ];
 
@@ -30,15 +34,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setChecking(false);
     };
     check();
-  }, []);
+  }, [fetchMe]);
 
   useEffect(() => {
-    if (!checking && (!user || user.role !== 'admin')) {
+    if (!checking && (!user || !canAccessAdmin(user.role))) {
       router.replace('/login');
+    } else if (!checking && !canAccessAdminPath(user?.role, pathname)) {
+      router.replace(adminLanding(user?.role));
     }
-  }, [checking, user, router]);
+  }, [checking, user, router, pathname]);
 
-  if (checking) {
+  if (checking || !canAccessAdmin(user?.role) || !canAccessAdminPath(user?.role, pathname)) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-stone-300 border-t-stone-700 rounded-full animate-spin" />
@@ -55,11 +61,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/" className="font-display text-white font-semibold tracking-wide text-base">
               ILENA INTERIOR
             </Link>
-            <p className="text-stone-500 text-xs mt-0.5">Admin Panel</p>
+            <p className="text-stone-500 text-xs mt-0.5">{user?.role === 'ads_analyst' ? 'Analis Iklan · Read-only' : 'Admin Panel'}</p>
           </div>
 
           <nav className="flex-1 p-3 space-y-1">
-            {NAV.map(({ href, label, icon: Icon }) => {
+            {NAV.filter(item => canAccessAdminPath(user?.role, item.href)).map(({ href, label, icon: Icon }) => {
               const active = href === '/admin' ? pathname === href : pathname.startsWith(href);
               return (
                 <Link
@@ -102,7 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Top Bar with Notification Bell */}
           <div className="bg-stone-900 border-b border-stone-800 px-6 py-3 flex items-center justify-end">
-            <NotificationBell />
+            {user?.role === 'admin' && <NotificationBell />}
           </div>
 
           {/* Main Content */}

@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Seed nomor WA default
 INSERT INTO settings (`key`, `value`) VALUES
   ('whatsapp_number', '6281234567890'),
-  ('whatsapp_message', 'Halo Ilena, mau tanya tanya koleksinya.')
+('whatsapp_message', 'Halo Ilena, mau tanya tanya koleksinya.')
 ON DUPLICATE KEY UPDATE `key` = `key`;
 
 -- Seed wallpaper awal

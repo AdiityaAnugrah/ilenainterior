@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { Save, MessageCircle, Phone, BarChart3, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { MetaCapiSettings } from '@/components/admin/MetaCapiSettings';
 
 type TrackingSettings = {
   google_tag_manager_id: string;
@@ -36,12 +37,6 @@ const trackingFields = [
     label: 'TikTok Pixel ID',
     placeholder: 'CXXXXXXXXXXXXXXXXXXX',
     helper: 'Pixel TikTok untuk tracking iklan dan event PageView.',
-  },
-  {
-    key: 'meta_pixel_id',
-    label: 'Meta/Facebook Pixel ID',
-    placeholder: '873353055789012',
-    helper: 'Pixel Meta untuk Facebook/Instagram Ads.',
   },
 ] as const;
 
@@ -207,6 +202,8 @@ export default function AdminSettingsPage() {
             ))}
           </div>
         </section>
+
+        <MetaCapiSettings />
 
         <button
           onClick={handleSave}

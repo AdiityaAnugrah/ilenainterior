@@ -126,7 +126,6 @@ router.get('/settings/public', async (req, res) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.json({
       whatsapp_number: settings.whatsapp_number || '',
-      whatsapp_message: settings.whatsapp_message || 'Halo Ilena, mau tanya tanya koleksinya.',
       google_tag_manager_id: settings.google_tag_manager_id || '',
       google_analytics_id: settings.google_analytics_id || '',
       tiktok_pixel_id: settings.tiktok_pixel_id || '',

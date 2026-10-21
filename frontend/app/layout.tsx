@@ -3,6 +3,7 @@ import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
 import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider';
+import { MetaPageView } from '@/components/MetaPageView';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
@@ -120,19 +121,6 @@ function tiktokPixelScript(id: string) {
 }(window, document, 'ttq');`;
 }
 
-function metaPixelScript(id: string) {
-  return `!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '${id}');
-fbq('track', 'PageView');`;
-}
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const settings = await getTrackingSettings();
   const gtmId = cleanId(settings.google_tag_manager_id, /^GTM-[A-Z0-9]+$/i);
@@ -148,7 +136,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {gaId && <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />}
         {gaId && <script dangerouslySetInnerHTML={{ __html: googleAnalyticsScript(gaId) }} />}
         {tiktokId && <script dangerouslySetInnerHTML={{ __html: tiktokPixelScript(tiktokId) }} />}
-        {metaId && <script dangerouslySetInnerHTML={{ __html: metaPixelScript(metaId) }} />}
       </head>
       <body className="font-sans bg-stone-50 text-stone-900 antialiased">
         {gtmId && (
@@ -161,18 +148,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             />
           </noscript>
         )}
-        {metaId && (
-          <noscript>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              height="1"
-              width="1"
-              style={{ display: 'none' }}
-              src={`https://www.facebook.com/tr?id=${metaId}&ev=PageView&noscript=1`}
-              alt=""
-            />
-          </noscript>
-        )}
+        {metaId && <MetaPageView pixelId={metaId} />}
         <ServiceWorkerProvider>
           {children}
         </ServiceWorkerProvider>

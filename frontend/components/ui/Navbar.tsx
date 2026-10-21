@@ -1,4 +1,5 @@
 'use client';
+import { canAccessAdmin, adminLanding } from '@/lib/adminAccess';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -38,9 +39,9 @@ export default function Navbar() {
                 <FolderOpen size={14} />
                 Proyek Saya
               </Link>
-              {user.role === 'admin' && (
+              {canAccessAdmin(user.role) && (
                 <Link
-                  href="/admin"
+                  href={adminLanding(user.role)}
                   className="flex items-center gap-1.5 text-sm text-stone-600 hover:text-stone-900 transition-colors"
                 >
                   <Settings size={14} />
@@ -93,8 +94,8 @@ export default function Navbar() {
                 <Link href="/projects" onClick={closeMenu} className="flex items-center gap-2 px-2 py-2.5 rounded-lg text-sm text-stone-700 hover:bg-stone-100 transition-colors">
                   <FolderOpen size={16} /> Proyek Saya
                 </Link>
-                {user.role === 'admin' && (
-                  <Link href="/admin" onClick={closeMenu} className="flex items-center gap-2 px-2 py-2.5 rounded-lg text-sm text-stone-700 hover:bg-stone-100 transition-colors">
+                {canAccessAdmin(user.role) && (
+                  <Link href={adminLanding(user.role)} onClick={closeMenu} className="flex items-center gap-2 px-2 py-2.5 rounded-lg text-sm text-stone-700 hover:bg-stone-100 transition-colors">
                     <Settings size={16} /> Admin
                   </Link>
                 )}

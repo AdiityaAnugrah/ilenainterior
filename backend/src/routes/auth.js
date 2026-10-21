@@ -2,10 +2,11 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
+const loginRateLimit = require('../middleware/loginRateLimit');
 
 // Register
 router.post('/register', async (req, res) => {
-  const { name, email, password, guest_token } = req.body;
+  const { name, email, password, guest_token } = req.body || {};
   if (!name || !email || !password)
     return res.status(400).json({ message: 'Semua field wajib diisi' });
 
@@ -67,8 +68,8 @@ router.post('/register', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
-  const { email, password, guest_token } = req.body;
+router.post('/login', loginRateLimit, async (req, res) => {
+  const { email, password, guest_token } = req.body || {};
   if (!email || !password)
     return res.status(400).json({ message: 'Email dan password wajib diisi' });
 
