@@ -13,12 +13,12 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchMe();
-  }, []);
+  }, [fetchMe]);
 
   const closeMenu = () => setOpen(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
+    <nav aria-label="Navigasi utama" className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-stone-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link href="/" onClick={closeMenu} className="font-display text-lg sm:text-xl font-semibold text-stone-900 tracking-wide">
           ILENA INTERIOR
@@ -28,6 +28,9 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-4">
           <Link href="/catalog" className="text-sm text-stone-600 hover:text-stone-900 transition-colors">
             Katalog
+          </Link>
+          <Link href="/portofolio" className="text-sm text-stone-600 hover:text-stone-900 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1e493d]">
+            Portofolio
           </Link>
 
           {user ? (
@@ -87,6 +90,9 @@ export default function Navbar() {
           <div className="px-4 py-3 flex flex-col gap-1">
             <Link href="/catalog" onClick={closeMenu} className="px-2 py-2.5 rounded-lg text-sm text-stone-700 hover:bg-stone-100 transition-colors">
               Katalog
+            </Link>
+            <Link href="/portofolio" onClick={closeMenu} className="px-2 py-2.5 rounded-lg text-sm text-stone-700 hover:bg-stone-100 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1e493d]">
+              Portofolio
             </Link>
 
             {user ? (
