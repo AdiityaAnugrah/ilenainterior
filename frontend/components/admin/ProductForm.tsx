@@ -22,7 +22,7 @@ interface ProductFormProps {
     description?: string; price?: number;
     dimensions?: { width: number; depth: number; height: number };
     thumbnail?: string | null; model_3d?: string | null;
-    tags?: string[]; stock?: number; is_active?: number;
+    tags?: string[]; stock?: number; is_active?: number; revision?: string;
     variants?: Variant[];
   };
   mode: 'new' | 'edit';

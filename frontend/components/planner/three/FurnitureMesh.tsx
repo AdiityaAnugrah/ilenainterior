@@ -380,9 +380,9 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
     const ownedTextures = new Set<THREE.Texture>();
     cloned.traverse((obj) => {
       if (!(obj as THREE.Mesh).isMesh) return;
-      const materials = Array.isArray((obj as THREE.Mesh).material)
-        ? (obj as THREE.Mesh).material
-        : [(obj as THREE.Mesh).material];
+      const mesh = obj as THREE.Mesh;
+      const material = mesh.material;
+      const materials: THREE.Material[] = Array.isArray(material) ? material : [material];
       for (const material of materials) {
         ownedMaterials.add(material);
         for (const value of Object.values(material)) {

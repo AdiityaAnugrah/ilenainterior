@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import api from '@/lib/api';
+import axios from 'axios';
 import { formatPrice } from '@/lib/utils';
 import { Plus, Search, Pencil, Trash2, Box, Image as ImageIcon, Package, Power, Copy, Eye, Loader2, FileSpreadsheet, X, Edit3 } from 'lucide-react';
 import Pagination from '@/components/admin/Pagination';
@@ -439,7 +440,7 @@ export default function AdminProductsPage() {
       ));
       const errorMsg = handleApiError(error, 'Stock Update', productId);
       toast.error(errorMsg);
-      if (error?.response?.status === 409 || error?.response?.status === 428) load();
+      if (axios.isAxiosError(error) && (error.response?.status === 409 || error.response?.status === 428)) load();
     } finally {
       setProductLoading(productId, false);
     }
