@@ -44,6 +44,26 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
 }
 
+wait_for_http() {
+  local url="$1"
+  local label="$2"
+  local attempts="${HEALTH_CHECK_ATTEMPTS:-12}"
+  local interval="${HEALTH_CHECK_INTERVAL:-5}"
+  local attempt
+
+  for ((attempt = 1; attempt <= attempts; attempt++)); do
+    if curl -fsS --connect-timeout 5 --max-time 15 "$url" >/dev/null 2>&1; then
+      log "$label succeeded (attempt $attempt/$attempts)"
+      return 0
+    fi
+    if (( attempt < attempts )); then
+      log "$label not ready (attempt $attempt/$attempts); retrying in ${interval}s"
+      sleep "$interval"
+    fi
+  done
+  return 1
+}
+
 require_clean_worktree() {
   local status
   status="$(git -C "$ROOT_DIR" status --porcelain --untracked-files=all)"
@@ -105,9 +125,9 @@ pm2 restart "$BACKEND_PM2_NAME" --update-env
 pm2 save
 
 log "Checking backend health: $BACKEND_HEALTH_URL"
-curl -fsS "$BACKEND_HEALTH_URL" >/dev/null
+wait_for_http "$BACKEND_HEALTH_URL" "Backend health" || die "Backend health check failed after ${HEALTH_CHECK_ATTEMPTS:-12} attempts"
 log "Checking frontend response: $PUBLIC_URL"
-curl -fsS "$PUBLIC_URL/" >/dev/null
+wait_for_http "$PUBLIC_URL/" "Frontend response" || die "Frontend health check failed after ${HEALTH_CHECK_ATTEMPTS:-12} attempts"
 
 if [[ -f "$LAST_SUCCESS_FILE" ]]; then
   PRIOR_SUCCESS="$(tr -d '[:space:]' < "$LAST_SUCCESS_FILE")"

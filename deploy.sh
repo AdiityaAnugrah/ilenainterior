@@ -58,6 +58,26 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
 }
 
+wait_for_http() {
+  local url="$1"
+  local label="$2"
+  local attempts="${HEALTH_CHECK_ATTEMPTS:-12}"
+  local interval="${HEALTH_CHECK_INTERVAL:-5}"
+  local attempt
+
+  for ((attempt = 1; attempt <= attempts; attempt++)); do
+    if curl -fsS --connect-timeout 5 --max-time 15 "$url" >/dev/null 2>&1; then
+      log "$label succeeded (attempt $attempt/$attempts)"
+      return 0
+    fi
+    if (( attempt < attempts )); then
+      log "$label not ready (attempt $attempt/$attempts); retrying in ${interval}s"
+      sleep "$interval"
+    fi
+  done
+  return 1
+}
+
 require_clean_worktree() {
   local status
   status="$(git -C "$ROOT_DIR" status --porcelain --untracked-files=all)"
@@ -159,13 +179,26 @@ pm2 save
 
 if [[ $RUN_HEALTH_CHECK -eq 1 ]]; then
   log "Checking backend health: $BACKEND_HEALTH_URL"
-  curl -fsS "$BACKEND_HEALTH_URL" >/dev/null
+  wait_for_http "$BACKEND_HEALTH_URL" "Backend health" || die "Backend health check failed after ${HEALTH_CHECK_ATTEMPTS:-12} attempts"
 
   if [[ $DEPLOY_FRONTEND -eq 1 ]]; then
-    log "Checking frontend chunk from: $PUBLIC_URL"
-    CSS_PATH="$(curl -fsS "$PUBLIC_URL/" | grep -oE '/_next/static/chunks/[^"]+\.css' | head -1 || true)"
-    [[ -n "$CSS_PATH" ]] || die "Could not detect frontend CSS chunk from $PUBLIC_URL"
-    curl -fsSI "$PUBLIC_URL$CSS_PATH" >/dev/null
+    log "Checking frontend CSS chunk from: $PUBLIC_URL"
+    CSS_READY=0
+    CSS_PATH=""
+    for ((attempt = 1; attempt <= ${HEALTH_CHECK_ATTEMPTS:-12}; attempt++)); do
+      PAGE_HTML="$(curl -fsS --connect-timeout 5 --max-time 15 "$PUBLIC_URL/" 2>/dev/null || true)"
+      CSS_PATH="$(printf '%s' "$PAGE_HTML" | grep -oE '/_next/static/chunks/[^"]+\.css' | head -1 || true)"
+      if [[ -n "$CSS_PATH" ]] && curl -fsSI --connect-timeout 5 --max-time 15 "$PUBLIC_URL$CSS_PATH" >/dev/null 2>&1; then
+        log "Frontend CSS chunk is ready (attempt $attempt/${HEALTH_CHECK_ATTEMPTS:-12})"
+        CSS_READY=1
+        break
+      fi
+      if (( attempt < ${HEALTH_CHECK_ATTEMPTS:-12} )); then
+        log "Frontend chunk not ready (attempt $attempt/${HEALTH_CHECK_ATTEMPTS:-12}); retrying in ${HEALTH_CHECK_INTERVAL:-5}s"
+        sleep "${HEALTH_CHECK_INTERVAL:-5}"
+      fi
+    done
+    [[ $CSS_READY -eq 1 ]] || die "Frontend CSS chunk check failed after ${HEALTH_CHECK_ATTEMPTS:-12} attempts"
   fi
 fi
 
