@@ -51,7 +51,7 @@ class QueryOptimizer {
       const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,32}$/i.test(error.code)
         ? error.code
         : 'UNKNOWN';
-      console.error('[Query Error]', { duration, operation, code });
+      console.error(`[Query Error] ${JSON.stringify({ duration, operation, code })}`);
       throw error;
     }
   }

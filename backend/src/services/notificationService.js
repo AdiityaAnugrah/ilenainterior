@@ -1,3 +1,5 @@
+const parseJsonColumn = require('./parseJsonColumn');
+
 /**
  * NotificationService
  * Handles creation, retrieval, and management of admin notifications
@@ -100,7 +102,7 @@ class NotificationService {
       // Parse metadata JSON
       const data = rows.map(row => ({
         ...row,
-        metadata: row.metadata ? JSON.parse(row.metadata) : null,
+        metadata: parseJsonColumn(row.metadata),
         is_read: Boolean(row.is_read),
       }));
 
@@ -168,25 +170,17 @@ class NotificationService {
   async markAllAsRead(userId) {
     const conn = await this.pool.getConnection();
     try {
-      // Get all notification IDs that are unread for this user
-      const [unreadNotifications] = await conn.query(
-        `SELECT n.id
+      // Insert unread rows in one explicit SELECT to avoid driver-dependent
+      // expansion of nested VALUES arrays and races between select and insert.
+      await conn.query(
+        `INSERT IGNORE INTO notification_reads (notification_id, user_id, read_at)
+         SELECT n.id, ?, NOW()
          FROM notifications n
-         WHERE n.id NOT IN (
-           SELECT notification_id FROM notification_reads WHERE user_id = ?
-         )`,
-        [userId]
+         LEFT JOIN notification_reads nr
+           ON nr.notification_id = n.id AND nr.user_id = ?
+         WHERE nr.id IS NULL`,
+        [userId, userId]
       );
-
-      // Insert all as read (use INSERT IGNORE to handle any race conditions)
-      if (unreadNotifications.length > 0) {
-        const values = unreadNotifications.map(n => [n.id, userId, new Date()]);
-        await conn.query(
-          `INSERT IGNORE INTO notification_reads (notification_id, user_id, read_at)
-           VALUES ?`,
-          [values]
-        );
-      }
 
       // Emit updated unread count (0) to user's socket connections
       this.emitUnreadCountToUser(userId, 0);

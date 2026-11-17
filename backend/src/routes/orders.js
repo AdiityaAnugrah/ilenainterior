@@ -2,6 +2,7 @@ const router = require('express').Router();
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
+const parseJsonColumn = require('../services/parseJsonColumn');
 
 const MAX_ORDER_AMOUNT_MINOR = 999999999999999n;
 const MAX_ORDER_LINES = 100;
@@ -48,7 +49,7 @@ router.get('/:id', auth, async (req, res) => {
       [req.params.id]
     );
 
-    res.json({ ...orders[0], shipping_address: JSON.parse(orders[0].shipping_address || '{}'), items });
+    res.json({ ...orders[0], shipping_address: parseJsonColumn(orders[0].shipping_address, {}), items });
   } finally {
     conn.release();
   }

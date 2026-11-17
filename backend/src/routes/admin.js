@@ -8,6 +8,7 @@ const path      = require('path');
 const fs        = require('fs');
 const adminAuditLog = require('../middleware/adminAuditLog');
 const { productRevision } = require('../services/productRevision');
+const parseJsonColumn = require('../services/parseJsonColumn');
 
 // Import cache managers from route files
 const { products: productsCacheManager, wallpapers: wallpapersCacheManager } = require('../cache/catalogCaches');
@@ -112,7 +113,7 @@ router.get('/products', adminAuth, async (req, res) => {
     );
     const [count] = await conn.query(`SELECT COUNT(*) as total FROM products p ${clause}`, params);
     res.json({
-      data: rows.map(r => ({ ...r, revision: productRevision(r), dimensions: JSON.parse(r.dimensions || '{}'), tags: JSON.parse(r.tags || '[]') })),
+      data: rows.map(r => ({ ...r, revision: productRevision(r), dimensions: parseJsonColumn(r.dimensions, {}), tags: parseJsonColumn(r.tags, []) })),
       total: count[0].total,
     });
   } finally { conn.release(); }
@@ -126,7 +127,7 @@ router.get('/products/:id', adminAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ message: 'Produk tidak ditemukan' });
     const [variants] = await conn.query('SELECT * FROM product_variants WHERE product_id = ?', [req.params.id]);
     const p = rows[0];
-    res.json({ ...p, revision: productRevision(p), dimensions: JSON.parse(p.dimensions || '{}'), tags: JSON.parse(p.tags || '[]'), variants });
+    res.json({ ...p, revision: productRevision(p), dimensions: parseJsonColumn(p.dimensions, {}), tags: parseJsonColumn(p.tags, []), variants });
   } finally { conn.release(); }
 });
 
@@ -889,7 +890,7 @@ router.get('/orders/:id', adminAuth, async (req, res) => {
     // Parse shipping_address JSON
     if (order.shipping_address) {
       try {
-        order.shipping_address = JSON.parse(order.shipping_address);
+        order.shipping_address = parseJsonColumn(order.shipping_address, {});
       } catch (e) {
         order.shipping_address = {};
       }
@@ -1128,7 +1129,7 @@ router.put('/orders/:id/status', adminAuth, async (req, res) => {
             // Parse shipping_address
             if (orderData.shipping_address) {
               try {
-                orderData.shipping_address = JSON.parse(orderData.shipping_address);
+                orderData.shipping_address = parseJsonColumn(orderData.shipping_address, {});
               } catch (e) {
                 orderData.shipping_address = {};
               }
@@ -1818,7 +1819,7 @@ router.get('/audit-logs', adminAuth, async (req, res) => {
     );
     res.json(rows.map(row => ({
       ...row,
-      request_body: row.request_body ? JSON.parse(row.request_body) : null,
+      request_body: parseJsonColumn(row.request_body),
     })));
   } finally {
     conn.release();
