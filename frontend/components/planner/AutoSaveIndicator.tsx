@@ -6,9 +6,12 @@ import { cn } from '@/lib/utils';
 interface AutoSaveIndicatorProps {
   isSaving: boolean;
   lastSaved: Date | null;
+  hasError: boolean;
+  hasUnsavedChanges: boolean;
+  errorMessage?: string | null;
 }
 
-export default function AutoSaveIndicator({ isSaving, lastSaved }: AutoSaveIndicatorProps) {
+export default function AutoSaveIndicator({ isSaving, lastSaved, hasError, hasUnsavedChanges, errorMessage }: AutoSaveIndicatorProps) {
   const [showSaved, setShowSaved] = useState(false);
   const [timeAgo, setTimeAgo] = useState<string>('');
 
@@ -52,6 +55,24 @@ export default function AutoSaveIndicator({ isSaving, lastSaved }: AutoSaveIndic
       <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-100">
         <Loader2 size={14} className="animate-spin" />
         <span>Menyimpan...</span>
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div role="status" className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-medium border border-red-100">
+        <Cloud size={14} />
+        <span>{errorMessage || 'Gagal menyimpan — coba Simpan lagi'}</span>
+      </div>
+    );
+  }
+
+  if (hasUnsavedChanges) {
+    return (
+      <div role="status" className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-800 rounded-lg text-xs font-medium border border-amber-100">
+        <Cloud size={14} />
+        <span>Perubahan belum tersimpan</span>
       </div>
     );
   }

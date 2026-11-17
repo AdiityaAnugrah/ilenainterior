@@ -19,17 +19,21 @@ const STEPS = [
 export default function WizardBar() {
   const { currentStep, setCurrentStep, viewMode, setViewMode, projectName, setProjectName } = useEditorStore();
   const { user } = useAuthStore();
-  const { save, isSaving, lastSaved } = useAutoSave();
+  const { save, isSaving, lastSaved, saveError, saveErrorMessage, hasUnsavedChanges } = useAutoSave();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [editingName, setEditingName] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    await save(false);
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved(false);
+    try {
+      const succeeded = await save(false);
+      if (succeeded) setTimeout(() => setSaved(false), 2000);
+      setSaved(succeeded);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Preload Three.js controls when user hovers over 3D/Walk buttons
@@ -103,7 +107,7 @@ export default function WizardBar() {
 
       {/* Auto-save indicator — sembunyi di HP untuk hemat ruang */}
       <div className="hidden sm:flex items-center">
-        <AutoSaveIndicator isSaving={isSaving} lastSaved={lastSaved} />
+        <AutoSaveIndicator isSaving={isSaving} lastSaved={lastSaved} hasError={saveError} hasUnsavedChanges={hasUnsavedChanges} errorMessage={saveErrorMessage} />
       </div>
 
       {/* View toggle */}

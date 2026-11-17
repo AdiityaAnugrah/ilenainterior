@@ -70,7 +70,7 @@ export default function ProjectsPage() {
         scale:       i.scale       ?? 1,
         variantColor: i.variantColor ?? i.variant_color,
       }));
-      loadProject(id, data.name, config, items);
+      loadProject(id, data.name, config, items, data.revision);
       router.push('/planner');
     } catch {
       toast.error('Gagal membuka proyek');

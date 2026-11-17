@@ -1,5 +1,6 @@
 package com.ilena.interior.data
 
+import com.ilena.interior.BuildConfig
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -13,9 +14,7 @@ object Session {
 }
 
 object ApiClient {
-    // Backend PRODUKSI (HTTPS) — tidak perlu jalanin backend lokal.
-    // Untuk tes lokal: ganti ke "http://10.0.2.2:5000" (emulator) atau IP LAN (HP fisik).
-    const val SERVER_URL = "https://ilenafurniture.net"
+    private val serverUrl = BuildConfig.API_BASE_URL.trimEnd('/')
 
     private val authInterceptor = Interceptor { chain ->
         val builder = chain.request().newBuilder()
@@ -29,7 +28,7 @@ object ApiClient {
         .build()
 
     val api: ApiService = Retrofit.Builder()
-        .baseUrl("$SERVER_URL/")
+        .baseUrl("$serverUrl/")
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
@@ -39,6 +38,6 @@ object ApiClient {
     fun imageUrl(path: String?): String? {
         if (path.isNullOrBlank()) return null
         if (path.startsWith("http")) return path
-        return SERVER_URL + if (path.startsWith("/")) path else "/$path"
+        return serverUrl + if (path.startsWith("/")) path else "/$path"
     }
 }

@@ -74,7 +74,7 @@ class APICacheManager {
    */
   generateKey(req) {
     const method = req.method;
-    const path = req.path;
+    const path = `${req.baseUrl || ''}${req.path}`;
     const query = JSON.stringify(req.query);
     return `${method}:${path}:${query}`;
   }

@@ -17,6 +17,7 @@ class QueryOptimizer {
     this.pool = pool;
     this.slowQueryLog = [];
     this.slowQueryThreshold = 1000; // 1 second in milliseconds
+    this.slowQueryLogLimit = 100;
   }
 
   /**
@@ -46,7 +47,11 @@ class QueryOptimizer {
       return rows;
     } catch (error) {
       const duration = Date.now() - startTime;
-      console.error(`[Query Error] ${duration}ms: ${sql}`, error);
+      const operation = /^\s*([a-z]+)/i.exec(sql)?.[1]?.toUpperCase() || 'UNKNOWN';
+      const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,32}$/i.test(error.code)
+        ? error.code
+        : 'UNKNOWN';
+      console.error('[Query Error]', { duration, operation, code });
       throw error;
     }
   }
@@ -165,16 +170,24 @@ class QueryOptimizer {
     const logEntry = {
       sql,
       duration,
-      params,
+      params: Array.isArray(params)
+        ? params.map((value) => {
+          if (value === null || value === undefined || typeof value === 'number' || typeof value === 'boolean') return value;
+          return '[REDACTED]';
+        })
+        : [],
       timestamp: new Date().toISOString(),
     };
     
     this.slowQueryLog.push(logEntry);
+    if (this.slowQueryLog.length > this.slowQueryLogLimit) {
+      this.slowQueryLog.splice(0, this.slowQueryLog.length - this.slowQueryLogLimit);
+    }
     
     // Log to console with warning
     console.warn(`[SLOW QUERY] ${duration}ms: ${sql}`);
-    if (params && params.length > 0) {
-      console.warn(`[SLOW QUERY PARAMS]`, params);
+    if (logEntry.params.length > 0) {
+      console.warn(`[SLOW QUERY PARAMS] ${logEntry.params.length} values recorded; strings and objects redacted`);
     }
   }
 

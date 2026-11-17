@@ -18,6 +18,8 @@ BACKEND_HEALTH_URL="${BACKEND_HEALTH_URL:-$PUBLIC_URL/api/health}"
 
 STATE_DIR="$ROOT_DIR/.deploy"
 LAST_SUCCESS_FILE="$STATE_DIR/last_successful_commit"
+PREVIOUS_SUCCESS_FILE="$STATE_DIR/previous_successful_commit"
+DEPLOY_IN_PROGRESS_FILE="$STATE_DIR/deploy_in_progress"
 
 usage() {
   cat <<'USAGE'
@@ -39,6 +41,14 @@ log() {
   printf '[deploy] %s\n' "$*"
 }
 
+write_marker() {
+  local path="$1"
+  local value="$2"
+  local temp="${path}.tmp.$$"
+  printf '%s\n' "$value" > "$temp"
+  mv -f "$temp" "$path"
+}
+
 die() {
   printf '[deploy] ERROR: %s\n' "$*" >&2
   exit 1
@@ -46,6 +56,12 @@ die() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
+}
+
+require_clean_worktree() {
+  local status
+  status="$(git -C "$ROOT_DIR" status --porcelain --untracked-files=all)"
+  [[ -z "$status" ]] || die "Working tree is not clean; commit or remove local changes before deploy/rollback."
 }
 
 while [[ $# -gt 0 ]]; do
@@ -104,6 +120,7 @@ if [[ $RUN_HEALTH_CHECK -eq 1 ]]; then
 fi
 
 mkdir -p "$STATE_DIR"
+require_clean_worktree
 
 PRE_DEPLOY_COMMIT="$(git -C "$ROOT_DIR" rev-parse HEAD)"
 log "Starting deploy at commit $PRE_DEPLOY_COMMIT"
@@ -117,6 +134,7 @@ fi
 
 TARGET_COMMIT="$(git -C "$ROOT_DIR" rev-parse HEAD)"
 log "Target commit: $TARGET_COMMIT"
+write_marker "$DEPLOY_IN_PROGRESS_FILE" "$TARGET_COMMIT"
 
 if [[ $DEPLOY_FRONTEND -eq 1 ]]; then
   log "Deploying frontend"
@@ -151,5 +169,12 @@ if [[ $RUN_HEALTH_CHECK -eq 1 ]]; then
   fi
 fi
 
-printf '%s\n' "$TARGET_COMMIT" > "$LAST_SUCCESS_FILE"
+if [[ -f "$LAST_SUCCESS_FILE" ]]; then
+  PRIOR_SUCCESS="$(tr -d '[:space:]' < "$LAST_SUCCESS_FILE")"
+  if [[ -n "$PRIOR_SUCCESS" && "$PRIOR_SUCCESS" != "$TARGET_COMMIT" ]]; then
+    write_marker "$PREVIOUS_SUCCESS_FILE" "$PRIOR_SUCCESS"
+  fi
+fi
+write_marker "$LAST_SUCCESS_FILE" "$TARGET_COMMIT"
+rm -f "$DEPLOY_IN_PROGRESS_FILE"
 log "Deploy success. Saved last successful commit to $LAST_SUCCESS_FILE"

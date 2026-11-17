@@ -1,13 +1,6 @@
 const router = require('express').Router();
 const pool = require('../config/db');
-const APICacheManager = require('../cache/CacheManager');
-
-// Initialize cache manager with appropriate TTL
-const cacheManager = new APICacheManager({
-  defaultTTL: 300000, // 5 minutes default
-  maxSize: 200,
-  enableStats: true,
-});
+const cacheManager = require('../cache/catalogCaches').wallpapers;
 
 // Cache middleware with custom TTL for different routes
 const cacheMiddleware = (ttl) => {
@@ -34,14 +27,6 @@ const cacheMiddleware = (ttl) => {
 
     next();
   };
-};
-
-// Cache invalidation middleware for mutations
-const invalidateWallpapersCache = (req, res, next) => {
-  // Invalidate all wallpapers-related cache entries
-  const invalidated = cacheManager.invalidate(/GET:\/wallpapers/);
-  console.log(`[Cache Invalidation] Invalidated ${invalidated} wallpapers cache entries`);
-  next();
 };
 
 // GET all wallpapers (public)

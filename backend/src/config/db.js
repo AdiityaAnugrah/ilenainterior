@@ -1,6 +1,9 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+const connectionLimit = 50;
+const queueLimit = connectionLimit * 2;
+
 // Create connection pool with optimal settings for concurrent users
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -10,9 +13,9 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   
   // Connection pool settings
-  connectionLimit: 50,        // Maximum 50 concurrent connections
+  connectionLimit,            // Maximum 50 concurrent connections
   waitForConnections: true,   // Wait for available connection instead of throwing error
-  queueLimit: 0,              // Unlimited queue (no limit on waiting requests)
+  queueLimit,                 // Bound waiting requests to two per active pool slot
   
   // Keep-alive settings to prevent connection drops
   enableKeepAlive: true,
@@ -123,6 +126,7 @@ function logPoolStats() {
     idle: stats.idleConnections,
     queued: stats.queuedRequests,
     max: stats.maxConnections,
+    queueLimit: stats.queueLimit,
   });
 }
 
@@ -138,7 +142,7 @@ if (process.env.NODE_ENV === 'production') {
   try {
     const connection = await pool.getConnection();
     console.log('[DB Pool] Database connection pool initialized successfully');
-    console.log(`[DB Pool] Configuration: max=50, waitForConnections=true, queueLimit=0 (unlimited)`);
+    console.log(`[DB Pool] Configuration: max=${connectionLimit}, waitForConnections=true, queueLimit=${queueLimit}`);
     console.log(`[DB Pool] Timeouts: connect=10s`);
     connection.release();
     

@@ -250,6 +250,9 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
     if (!form.sku || !form.name || !form.category || !form.price) {
       toast.error('SKU, nama, kategori, dan harga wajib diisi'); return;
     }
+    if (mode === 'edit' && !d.revision) {
+      toast.error('Versi produk tidak tersedia. Muat ulang sebelum menyimpan.'); return;
+    }
     if (!thumbnail && !d.thumbnail && mode === 'new') {
       toast.error('Foto produk wajib diupload'); return;
     }
@@ -258,6 +261,7 @@ export default function ProductForm({ initialData, mode }: ProductFormProps) {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
+      if (mode === 'edit') fd.append('expected_revision', d.revision!);
       if (thumbnail) fd.append('thumbnail', thumbnail);
       if (model3d)   fd.append('model_3d',  model3d);
 

@@ -79,12 +79,13 @@ class ErrorTracker {
    * Log database error
    */
   logDatabaseError(sql, error, params = []) {
-    this.error('database', `Database error: ${error.message}`, error, {
-      sql: this.sanitizeSQL(sql),
-      params: this.sanitizeParams(params),
-      code: error.code,
-      errno: error.errno,
-      sqlState: error.sqlState,
+    const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,32}$/.test(error.code)
+      ? error.code
+      : undefined;
+    this.logError('error', 'database', 'Database operation failed', null, {
+      operation: this.sqlOperation(sql),
+      parameterCount: Array.isArray(params) ? params.length : 0,
+      ...(code ? { code } : {}),
     });
   }
 
@@ -105,12 +106,7 @@ class ErrorTracker {
    * Log API error
    */
   logAPIError(method, path, error, statusCode = 500) {
-    this.error('api', `API error: ${method} ${path}`, error, {
-      method,
-      path,
-      statusCode,
-      errorMessage: error.message,
-    });
+    this.logError('error', 'api', 'API request failed', null, { method, path, statusCode });
   }
 
   /**
@@ -164,11 +160,9 @@ class ErrorTracker {
    * Log validation error
    */
   logValidationError(field, value, reason) {
-    this.info('validation', `Validation error: ${field}`, {
-      field,
-      value: this.sanitizeValue(value),
-      reason,
-    });
+    const safeReason = typeof reason === 'string' && /^[A-Z0-9_ -]{1,64}$/i.test(reason) ? reason : 'invalid';
+    const valueType = value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+    this.info('validation', `Validation error: ${field}`, { field, valueType, reason: safeReason });
   }
 
   // ==================== Core Logging Method ====================
@@ -262,9 +256,6 @@ class ErrorTracker {
             path: req.path,
             statusCode,
             duration,
-            query: req.query,
-            ip: req.ip,
-            userAgent: req.get('user-agent'),
           });
         }
 
@@ -479,6 +470,11 @@ class ErrorTracker {
   /**
    * Sanitize SQL query for logging (remove sensitive data)
    */
+  sqlOperation(sql) {
+    const match = typeof sql === 'string' ? sql.trim().match(/^(SELECT|INSERT|UPDATE|DELETE|REPLACE|WITH)\b/i) : null;
+    return match ? match[1].toUpperCase() : 'UNKNOWN';
+  }
+
   sanitizeSQL(sql) {
     if (!sql) return '';
     // Truncate very long queries

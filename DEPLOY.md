@@ -5,6 +5,8 @@ This project has two helper scripts:
 - `deploy.sh`: pull latest code, build, restart PM2 services, run health checks
 - `rollback.sh`: deploy previous commit quickly
 
+Both scripts refuse to fetch, checkout, build, or restart when the Git worktree has tracked or untracked changes. Commit/reconcile source changes first. Runtime deployment markers under `.deploy/` are ignored by Git.
+
 ## 1) One-command deploy
 
 Run from project root:
@@ -22,7 +24,7 @@ What it does by default:
 5. Health checks:
    - `https://ilenafurniture.net/api/health`
    - CSS chunk from `https://ilenafurniture.net/`
-6. Save commit SHA to `.deploy/last_successful_commit`
+6. Record `.deploy/deploy_in_progress` before changing processes; on success atomically save the deployed commit to `.deploy/last_successful_commit`, rotate the prior distinct successful commit to `.deploy/previous_successful_commit`, then remove the in-progress marker
 
 ## 2) Useful deploy options
 
@@ -36,11 +38,13 @@ What it does by default:
 
 ## 3) Quick rollback
 
-Rollback to last successful deploy:
+Rollback to the previous successful deploy (not the currently deployed commit):
 
 ```bash
 ./rollback.sh last
 ```
+
+The first successful deployment creates only the current marker. `rollback.sh last` becomes available after a later distinct successful deployment records a previous marker. If a deployment is interrupted after its in-progress marker is written, `rollback.sh last` targets the last successful marker instead.
 
 Rollback to a specific commit:
 

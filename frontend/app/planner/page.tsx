@@ -39,7 +39,8 @@ function PlannerContent() {
             data.id,
             data.name || 'Proyek Baru',
             data.room_config || {},
-            data.items || []
+            data.items || [],
+            data.revision
           );
           
           toast.success('Proyek berhasil dimuat');

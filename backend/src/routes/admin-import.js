@@ -3,6 +3,7 @@ const ExcelJS = require('exceljs');
 const multer = require('multer');
 const adminAuth = require('../middleware/adminAuth');
 const pool = require('../config/db');
+const { productRevision } = require('../services/productRevision');
 
 const CATEGORIES = ['sofa', 'meja', 'kursi', 'rak', 'lampu', 'dekorasi', 'kasur', 'lemari', 'aksesori', 'lainnya'];
 
@@ -409,7 +410,7 @@ router.post('/products/import/update-preview',
       try {
         const placeholders = skus.map(() => '?').join(',');
         const [existing] = await conn.query(
-          `SELECT id, sku, name, category, price, stock, dimensions, description, tags, is_active, thumbnail, model_3d
+          `SELECT id, sku, name, category, price, stock, dimensions, description, tags, is_active, thumbnail, model_3d, model_2d_topdown
            FROM products WHERE sku IN (${placeholders})`,
           skus,
         );
@@ -423,6 +424,7 @@ router.post('/products/import/update-preview',
             description: p.description || '', tags: Array.isArray(tagsArr) ? tagsArr.join(', ') : '',
             is_active: p.is_active,
             thumbnail: p.thumbnail, model_3d: p.model_3d,
+            revision: productRevision(p),
           });
         });
       } finally {

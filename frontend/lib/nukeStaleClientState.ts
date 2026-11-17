@@ -1,5 +1,5 @@
 /**
- * Unregister semua Service Worker, hapus semua Cache API entries, lalu
+ * Unregister semua Service Worker, hapus Cache API entries milik ILENA, lalu
  * reload halaman dengan bypass cache.
  *
  * Dipakai ketika kita yakin browser dalam state basi (chunk 404,
@@ -33,7 +33,7 @@ export async function nukeStaleClientState(): Promise<void> {
     if ('caches' in window) {
       const names = await caches.keys();
       await Promise.all(
-        names.map((name) =>
+        names.filter((name) => name.startsWith('ilena-')).map((name) =>
           caches.delete(name).catch(() => {
             /* ignore */
           })

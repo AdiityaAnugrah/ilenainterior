@@ -111,6 +111,7 @@ const optimizeUploadedAsset = async (req, res, next) => {
       continue;
     }
 
+    let optimizedPath = null;
     try {
       console.log(`[AssetOptimizer] Starting optimization for: ${file.filename}`);
 
@@ -123,7 +124,7 @@ const optimizeUploadedAsset = async (req, res, next) => {
       console.log(`[AssetOptimizer] Original file preserved: ${baseName}_original${ext}`);
 
       // Optimize image to WebP format (main optimized version)
-      const optimizedPath = path.join(dir, `${baseName}-optimized.webp`);
+      optimizedPath = path.join(dir, `${baseName}-optimized.webp`);
       const optimizationStats = await assetOptimizer.optimizeImage(
         originalPath,
         optimizedPath,
@@ -177,6 +178,18 @@ const optimizeUploadedAsset = async (req, res, next) => {
       // Log error but don't fail the upload
       console.error(`[AssetOptimizer] Error optimizing asset ${file.filename}: ${error.message}`);
       console.error(error);
+
+      // A variant-generation failure can happen after the main WebP was written.
+      // Remove only this request's derived output before restoring the source.
+      if (optimizedPath) {
+        try {
+          await fs.promises.unlink(optimizedPath);
+        } catch (cleanupError) {
+          if (cleanupError.code !== 'ENOENT') {
+            console.error(`[AssetOptimizer] Error removing partial output: ${cleanupError.message}`);
+          }
+        }
+      }
       
       // If optimization failed, try to restore original file
       try {
@@ -215,5 +228,30 @@ const optimizeUploadedAsset = async (req, res, next) => {
   next();
 };
 
+const cleanupUploadedAssets = async (req) => {
+  const files = req.file ? [req.file] : Object.values(req.files || {}).flat();
+  const stats = Array.isArray(req.optimizationStats)
+    ? req.optimizationStats
+    : req.optimizationStats ? [req.optimizationStats] : [];
+  const candidates = files.map((file) => file.path);
+
+  for (const file of files) {
+    const result = stats.find((entry) => entry.fieldName === file.fieldname);
+    if (!result) continue;
+    candidates.push(path.join(path.dirname(file.path), result.originalFile));
+    candidates.push(...(result.variants || []).map((variant) => path.resolve(UPLOAD_DIR, variant.path)));
+  }
+
+  const uploadsRoot = path.resolve(UPLOAD_DIR);
+  const uniqueSafePaths = [...new Set(candidates.map((candidate) => path.resolve(candidate)))].filter((candidate) => {
+    const relative = path.relative(uploadsRoot, candidate);
+    return relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  });
+  const results = await Promise.allSettled(uniqueSafePaths.map((filePath) => fs.promises.unlink(filePath)));
+  results.filter((result) => result.status === 'rejected' && result.reason?.code !== 'ENOENT')
+    .forEach((result) => console.error('[Upload cleanup] Failed to remove uncommitted asset:', result.reason?.message));
+};
+
 module.exports = upload;
 module.exports.optimizeUploadedAsset = optimizeUploadedAsset;
+module.exports.cleanupUploadedAssets = cleanupUploadedAssets;

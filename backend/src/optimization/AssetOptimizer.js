@@ -91,6 +91,7 @@ class AssetOptimizer {
    * @returns {Promise<Array>} Array of variant results
    */
   async generateImageVariants(inputPath, outputDir, baseName) {
+    const outputPaths = [];
     try {
       // Define variants
       const variants = [
@@ -100,13 +101,13 @@ class AssetOptimizer {
       ];
 
       const results = [];
-
       // Ensure output directory exists
       await fs.mkdir(outputDir, { recursive: true });
 
       // Generate each variant
       for (const variant of variants) {
         const outputPath = path.join(outputDir, `${baseName}_${variant.name}.webp`);
+        outputPaths.push(outputPath);
         
         const result = await this.optimizeImage(inputPath, outputPath, {
           width: variant.width,
@@ -126,6 +127,15 @@ class AssetOptimizer {
 
       return results;
     } catch (error) {
+      await Promise.all(outputPaths.map(async (outputPath) => {
+        try {
+          await fs.unlink(outputPath);
+        } catch (cleanupError) {
+          if (cleanupError.code !== 'ENOENT') {
+            console.error(`Error removing partial image variant ${outputPath}:`, cleanupError.message);
+          }
+        }
+      }));
       console.error('Error generating image variants:', error);
       throw new Error(`Failed to generate image variants: ${error.message}`);
     }

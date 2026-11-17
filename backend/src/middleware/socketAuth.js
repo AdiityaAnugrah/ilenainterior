@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const resolveCurrentUser = require('./resolveCurrentUser');
 
 /**
  * Socket.io authentication middleware
@@ -20,15 +21,16 @@ const socketAuth = async (socket, next) => {
       return next(new Error('Invalid token'));
     }
 
-    // Verify user role is admin
-    if (decoded.role !== 'admin') {
+    // Resolve current authority from the database instead of trusting stale JWT claims.
+    const currentUser = await resolveCurrentUser(decoded.id);
+    if (!currentUser || currentUser.role !== 'admin') {
       return next(new Error('Admin access required'));
     }
 
     // Attach user info to socket
     socket.userId = decoded.id;
-    socket.userRole = decoded.role;
-    socket.userName = decoded.name || 'Admin';
+    socket.userRole = currentUser.role;
+    socket.userName = currentUser.name || decoded.name || 'Admin';
 
     next();
   } catch (error) {

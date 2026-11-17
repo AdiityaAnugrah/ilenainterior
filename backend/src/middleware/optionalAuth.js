@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const resolveCurrentUser = require('./resolveCurrentUser');
 
 /**
  * Optional authentication middleware
@@ -9,18 +10,27 @@ const jwt = require('jsonwebtoken');
  * Sets req.guestToken if guest token is provided
  * Allows request to proceed even without authentication
  */
-const optionalAuth = (req, res, next) => {
+const optionalAuth = async (req, res, next) => {
   // Try JWT authentication first
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
+    let decoded;
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(403).json({ message: 'Token tidak valid' });
+    }
+    if (!decoded.id) return res.status(403).json({ message: 'Token tidak valid' });
+
+    try {
+      const currentUser = await resolveCurrentUser(decoded.id);
+      if (!currentUser) return res.status(403).json({ message: 'Akun tidak aktif' });
+      req.user = { ...decoded, ...currentUser };
       return next();
     } catch (error) {
-      // Invalid JWT, continue to check guest token
-      console.log('[Optional Auth] Invalid JWT token, checking guest token');
+      console.error('[Optional Auth] Current account lookup failed:', error);
+      return res.status(503).json({ message: 'Otorisasi sementara tidak tersedia' });
     }
   }
 

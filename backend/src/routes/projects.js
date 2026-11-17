@@ -2,53 +2,18 @@ const router = require('express').Router();
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const optionalAuth = require('../middleware/optionalAuth');
-const APICacheManager = require('../cache/CacheManager');
 const queryOptimizer = require('../database/QueryOptimizer');
 const { v4: uuidv4 } = require('uuid');
+const { projectRevision } = require('../services/projectRevision');
 
-// Initialize cache manager with appropriate TTL
-const cacheManager = new APICacheManager({
-  defaultTTL: 180000, // 3 minutes default
-  maxSize: 200,
-  enableStats: true,
-});
-
-// Cache middleware with custom TTL for different routes
-const cacheMiddleware = (ttl) => {
-  return (req, res, next) => {
-    if (req.method !== 'GET') {
-      return next();
-    }
-
-    const key = cacheManager.generateKey(req);
-    const cached = cacheManager.get(key);
-
-    if (cached) {
-      res.set('X-Cache', 'HIT');
-      return res.json(cached);
-    }
-
-    res.set('X-Cache', 'MISS');
-    const originalJson = res.json.bind(res);
-    
-    res.json = (data) => {
-      cacheManager.set(key, data, ttl);
-      return originalJson(data);
-    };
-
-    next();
-  };
-};
-
-// Cache invalidation middleware for mutations
-const invalidateProjectsCache = (req, res, next) => {
-  // Invalidate all projects-related cache entries
-  cacheManager.invalidate(/GET:\/projects/);
-  next();
-};
+function parseJsonValue(value, fallback) {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== 'string') return value;
+  try { return JSON.parse(value); } catch { return fallback; }
+}
 
 // GET all projects milik user atau guest
-router.get('/', optionalAuth, cacheMiddleware(180000), async (req, res) => { // 3 minutes cache
+router.get('/', optionalAuth, async (req, res) => { // 3 minutes cache
   try {
     let query;
     let params;
@@ -95,13 +60,27 @@ router.get('/', optionalAuth, cacheMiddleware(180000), async (req, res) => { // 
     }
 
     const rows = await queryOptimizer.execute(query, params);
-    
-    // Parse room_config JSON for each project
-    const projects = rows.map(r => ({
-      ...r,
-      room_config: JSON.parse(r.room_config || '{}'),
-      item_count: parseInt(r.item_count) || 0,
-    }));
+    const legacyItemsByProject = new Map(rows.map((row) => [String(row.id), []]));
+    const projectIds = rows.map((row) => row.id);
+    for (let offset = 0; offset < projectIds.length; offset += 500) {
+      const batch = projectIds.slice(offset, offset + 500);
+      const placeholders = batch.map(() => '?').join(', ');
+      const legacyItems = await queryOptimizer.execute(
+        'SELECT project_id, id, product_id, variant_id, position, rotation, scale FROM project_items WHERE project_id IN (' + placeholders + ') ORDER BY project_id, id',
+        batch
+      );
+      for (const item of legacyItems) legacyItemsByProject.get(String(item.project_id))?.push(item);
+    }
+
+    const projects = rows.map((r) => {
+      const roomConfig = parseJsonValue(r.room_config, {});
+      return {
+        ...r,
+        revision: projectRevision(r, legacyItemsByProject.get(String(r.id))),
+        room_config: roomConfig,
+        item_count: Array.isArray(roomConfig.items) ? roomConfig.items.length : parseInt(r.item_count, 10) || 0,
+      };
+    });
     
     res.json(projects);
   } catch (error) {
@@ -111,7 +90,7 @@ router.get('/', optionalAuth, cacheMiddleware(180000), async (req, res) => { // 
 });
 
 // GET single project
-router.get('/:id', optionalAuth, cacheMiddleware(180000), async (req, res) => { // 3 minutes cache
+router.get('/:id', optionalAuth, async (req, res) => { // 3 minutes cache
   try {
     let query;
     let params;
@@ -135,12 +114,13 @@ router.get('/:id', optionalAuth, cacheMiddleware(180000), async (req, res) => { 
     }
 
     const project = projects[0];
-    const roomConfig = JSON.parse(project.room_config || '{}');
+    const roomConfig = parseJsonValue(project.room_config, {});
 
     // Items sudah lengkap tersimpan di room_config.items (termasuk elevation, model3d, dll)
     // Fallback ke project_items JOIN untuk proyek lama yang belum punya data lengkap
     const savedItems = roomConfig.items;
     let items = savedItems ?? [];
+    let revisionItems = [];
 
     if (!savedItems) {
       // Optimized query using indexes (idx_project_items_project_id, idx_variants_product_id)
@@ -173,11 +153,15 @@ router.get('/:id', optionalAuth, cacheMiddleware(180000), async (req, res) => { 
         [req.params.id]
       );
       
+      revisionItems = rows.map((i) => ({
+        id: i.id, product_id: i.product_id, variant_id: i.variant_id,
+        position: i.position, rotation: i.rotation, scale: i.scale,
+      }));
       // Parse JSON fields for each item
       items = rows.map(i => ({
         ...i,
-        position: JSON.parse(i.position || '{}'),
-        dimensions: JSON.parse(i.dimensions || '{}'),
+        position: parseJsonValue(i.position, {}),
+        dimensions: parseJsonValue(i.dimensions, {}),
         rotation: parseFloat(i.rotation) || 0,
         scale: parseFloat(i.scale) || 1,
         elevation: 0,
@@ -186,6 +170,7 @@ router.get('/:id', optionalAuth, cacheMiddleware(180000), async (req, res) => { 
 
     res.json({
       ...project,
+      revision: projectRevision(project, revisionItems),
       room_config: { ...roomConfig, items: undefined },
       items,
     });
@@ -196,7 +181,7 @@ router.get('/:id', optionalAuth, cacheMiddleware(180000), async (req, res) => { 
 });
 
 // POST create project
-router.post('/', optionalAuth, invalidateProjectsCache, async (req, res) => {
+router.post('/', optionalAuth, async (req, res) => {
   const { name, room_type, room_config } = req.body;
   if (!name || !room_type) return res.status(400).json({ message: 'Nama dan tipe ruangan wajib diisi' });
 
@@ -212,18 +197,19 @@ router.post('/', optionalAuth, invalidateProjectsCache, async (req, res) => {
       guestToken = req.guestToken || uuidv4();
     }
 
-    // Use QueryOptimizer for prepared statements and performance monitoring
+    const storedRoomConfig = JSON.stringify(room_config || {});
     const result = await queryOptimizer.execute(
       'INSERT INTO projects (user_id, guest_token, name, room_type, room_config) VALUES (?, ?, ?, ?, ?)',
-      [userId, guestToken, name, room_type, JSON.stringify(room_config || {})]
+      [userId, guestToken, name, room_type, storedRoomConfig]
     );
-    
-    res.status(201).json({ 
-      id: result.insertId, 
-      name, 
-      room_type, 
+    const created = await queryOptimizer.execute('SELECT * FROM projects WHERE id = ?', [result.insertId]);
+    res.status(201).json({
+      id: result.insertId,
+      name,
+      room_type,
       room_config,
-      guest_token: guestToken // Return guest token for frontend storage
+      revision: projectRevision(created[0], []),
+      guest_token: guestToken
     });
   } catch (error) {
     console.error('[Projects API Error]', error);
@@ -231,60 +217,80 @@ router.post('/', optionalAuth, invalidateProjectsCache, async (req, res) => {
   }
 });
 
-// PUT update project
-router.put('/:id', optionalAuth, invalidateProjectsCache, async (req, res) => {
-  const { name, room_config, thumbnail } = req.body;
-  
-  try {
-    let query;
-    let params;
+// PUT update project with mandatory optimistic revision checks.
+router.put('/:id', optionalAuth, async (req, res) => {
+  const { name, room_config, thumbnail, expected_revision } = req.body || {};
+  if (expected_revision === undefined) {
+    return res.status(428).json({ message: 'Muat ulang proyek sebelum menyimpan versi terbaru' });
+  }
+  if (typeof expected_revision !== 'string' || !/^[a-f0-9]{64}$/.test(expected_revision)) {
+    return res.status(400).json({ message: 'Versi proyek tidak valid' });
+  }
+  const requestedRoomConfig = room_config === undefined || room_config === null ? null : parseJsonValue(room_config, null);
+  if (requestedRoomConfig !== null && (typeof requestedRoomConfig !== 'object' || Array.isArray(requestedRoomConfig))) {
+    return res.status(400).json({ message: 'Konfigurasi proyek tidak valid' });
+  }
+  if (!req.user && !req.guestToken) return res.status(403).json({ message: 'Akses ditolak' });
 
-    if (req.user) {
-      // Authenticated user
-      query = `UPDATE projects 
-               SET name = COALESCE(?, name), 
-                   room_config = COALESCE(?, room_config), 
-                   thumbnail = COALESCE(?, thumbnail), 
-                   updated_at = NOW() 
-               WHERE id = ? AND user_id = ?`;
-      params = [
-        name || null, 
-        room_config ? JSON.stringify(room_config) : null, 
-        thumbnail || null, 
-        req.params.id, 
-        req.user.id
-      ];
-    } else if (req.guestToken) {
-      // Guest user
-      query = `UPDATE projects 
-               SET name = COALESCE(?, name), 
-                   room_config = COALESCE(?, room_config), 
-                   thumbnail = COALESCE(?, thumbnail), 
-                   updated_at = NOW() 
-               WHERE id = ? AND guest_token = ? AND user_id IS NULL`;
-      params = [
-        name || null, 
-        room_config ? JSON.stringify(room_config) : null, 
-        thumbnail || null, 
-        req.params.id, 
-        req.guestToken
-      ];
-    } else {
-      return res.status(403).json({ message: 'Akses ditolak' });
+  let connection;
+  let transactionOpen = false;
+  try {
+    connection = await queryOptimizer.pool.getConnection();
+    await connection.beginTransaction();
+    transactionOpen = true;
+    const [rows] = req.user
+      ? await connection.execute('SELECT * FROM projects WHERE id = ? AND user_id = ? FOR UPDATE', [req.params.id, req.user.id])
+      : await connection.execute('SELECT * FROM projects WHERE id = ? AND guest_token = ? AND user_id IS NULL FOR UPDATE', [req.params.id, req.guestToken]);
+    if (!rows.length) {
+      await connection.rollback();
+      transactionOpen = false;
+      return res.status(404).json({ message: 'Proyek tidak ditemukan' });
+    }
+    const existingConfig = parseJsonValue(rows[0].room_config, {});
+    const [legacyRows] = Array.isArray(existingConfig.items)
+      ? [[]]
+      : await connection.execute('SELECT id, product_id, variant_id, position, rotation, scale FROM project_items WHERE project_id = ? ORDER BY id', [req.params.id]);
+    if (projectRevision(rows[0], legacyRows) !== expected_revision) {
+      await connection.rollback();
+      transactionOpen = false;
+      return res.status(409).json({ message: 'Proyek berubah sejak terakhir dimuat. Muat ulang sebelum menyimpan.' });
     }
 
-    // Use QueryOptimizer for prepared statements and performance monitoring
-    await queryOptimizer.execute(query, params);
-    
-    res.json({ message: 'Proyek diperbarui' });
+    let savedRoomConfig = null;
+    if (room_config !== undefined && room_config !== null) {
+      savedRoomConfig = requestedRoomConfig;
+      if (!Array.isArray(savedRoomConfig.items) && Array.isArray(existingConfig.items)) {
+        savedRoomConfig = { ...savedRoomConfig, items: existingConfig.items };
+      }
+    }
+    const ownerPredicate = req.user ? 'user_id = ?' : 'guest_token = ? AND user_id IS NULL';
+    const ownerValue = req.user ? req.user.id : req.guestToken;
+    const updateSql = 'UPDATE projects SET name = COALESCE(?, name), room_config = COALESCE(?, room_config), ' +
+      'thumbnail = COALESCE(?, thumbnail), updated_at = NOW() WHERE id = ? AND ' + ownerPredicate;
+    await connection.execute(updateSql, [
+      name || null,
+      savedRoomConfig !== null ? JSON.stringify(savedRoomConfig) : null,
+      thumbnail || null,
+      req.params.id,
+      ownerValue
+    ]);
+    const [updatedRows] = await connection.execute('SELECT * FROM projects WHERE id = ? FOR UPDATE', [req.params.id]);
+    const updatedConfig = parseJsonValue(updatedRows[0].room_config, {});
+    const revision = projectRevision(updatedRows[0], Array.isArray(updatedConfig.items) ? [] : legacyRows);
+    await connection.commit();
+    transactionOpen = false;
+    return res.json({ message: 'Proyek diperbarui', revision });
   } catch (error) {
+    if (transactionOpen) await connection.rollback();
     console.error('[Projects API Error]', error);
-    res.status(500).json({ message: 'Gagal memperbarui proyek' });
+    return res.status(500).json({ message: 'Gagal memperbarui proyek' });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
 // DELETE project
-router.delete('/:id', optionalAuth, invalidateProjectsCache, async (req, res) => {
+router.delete('/:id', optionalAuth, async (req, res) => {
   try {
     let query;
     let params;
@@ -311,8 +317,30 @@ router.delete('/:id', optionalAuth, invalidateProjectsCache, async (req, res) =>
   }
 });
 
+// Lock and authorize the parent project before mutating its items.
+async function lockProjectForMutation(connection, req) {
+  if (!req.user && !req.guestToken) return { authorized: false, status: 403 };
+
+  const [rows] = req.user
+    ? await connection.execute(
+      'SELECT id, room_config FROM projects WHERE id = ? AND user_id = ? FOR UPDATE',
+      [req.params.id, req.user.id]
+    )
+    : await connection.execute(
+      'SELECT id, room_config FROM projects WHERE id = ? AND guest_token = ? AND user_id IS NULL FOR UPDATE',
+      [req.params.id, req.guestToken]
+    );
+
+  if (!rows.length) return { authorized: false, status: 404 };
+  let roomConfig = rows[0].room_config || {};
+  if (typeof roomConfig === 'string') {
+    try { roomConfig = JSON.parse(roomConfig); } catch { roomConfig = {}; }
+  }
+  return { authorized: true, usesEmbeddedItems: Array.isArray(roomConfig.items) };
+}
+
 // POST add item ke project
-router.post('/:id/items', optionalAuth, invalidateProjectsCache, async (req, res) => {
+router.post('/:id/items', optionalAuth, async (req, res) => {
   const { product_id, variant_id, position, rotation, scale } = req.body;
   
   // Validate required fields
@@ -327,6 +355,16 @@ router.post('/:id/items', optionalAuth, invalidateProjectsCache, async (req, res
     
     try {
       await connection.beginTransaction();
+      const access = await lockProjectForMutation(connection, req);
+      if (!access.authorized) {
+        await connection.rollback();
+        return res.status(access.status).json({ message: access.status === 404 ? 'Proyek tidak ditemukan' : 'Akses ditolak' });
+      }
+      if (access.usesEmbeddedItems) {
+        await connection.rollback();
+        return res.status(409).json({ message: 'Item proyek ini dikelola sebagai satu snapshot; simpan perubahan melalui editor proyek.' });
+      }
+
       
       // Insert project item using prepared statement
       const [result] = await connection.execute(
@@ -367,7 +405,7 @@ router.post('/:id/items', optionalAuth, invalidateProjectsCache, async (req, res
 });
 
 // PUT update item position/rotation
-router.put('/:id/items/:itemId', optionalAuth, invalidateProjectsCache, async (req, res) => {
+router.put('/:id/items/:itemId', optionalAuth, async (req, res) => {
   const { position, rotation, scale, variant_id } = req.body;
   
   try {
@@ -377,6 +415,16 @@ router.put('/:id/items/:itemId', optionalAuth, invalidateProjectsCache, async (r
     
     try {
       await connection.beginTransaction();
+      const access = await lockProjectForMutation(connection, req);
+      if (!access.authorized) {
+        await connection.rollback();
+        return res.status(access.status).json({ message: access.status === 404 ? 'Proyek tidak ditemukan' : 'Akses ditolak' });
+      }
+      if (access.usesEmbeddedItems) {
+        await connection.rollback();
+        return res.status(409).json({ message: 'Item proyek ini dikelola sebagai satu snapshot; simpan perubahan melalui editor proyek.' });
+      }
+
       
       // Update project item using prepared statement
       // Only update fields that are provided (COALESCE pattern)
@@ -430,7 +478,7 @@ router.put('/:id/items/:itemId', optionalAuth, invalidateProjectsCache, async (r
 });
 
 // DELETE item dari project
-router.delete('/:id/items/:itemId', optionalAuth, invalidateProjectsCache, async (req, res) => {
+router.delete('/:id/items/:itemId', optionalAuth, async (req, res) => {
   try {
     // Optimized: Use transaction to ensure atomicity
     // Both DELETE and UPDATE happen together or not at all
@@ -438,6 +486,16 @@ router.delete('/:id/items/:itemId', optionalAuth, invalidateProjectsCache, async
     
     try {
       await connection.beginTransaction();
+      const access = await lockProjectForMutation(connection, req);
+      if (!access.authorized) {
+        await connection.rollback();
+        return res.status(access.status).json({ message: access.status === 404 ? 'Proyek tidak ditemukan' : 'Akses ditolak' });
+      }
+      if (access.usesEmbeddedItems) {
+        await connection.rollback();
+        return res.status(409).json({ message: 'Item proyek ini dikelola sebagai satu snapshot; simpan perubahan melalui editor proyek.' });
+      }
+
       
       // Delete project item using prepared statement
       // Includes project_id check to ensure item belongs to this project

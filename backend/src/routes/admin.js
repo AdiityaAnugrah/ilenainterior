@@ -3,67 +3,86 @@ const pool      = require('../config/db');
 const adminAuth = require('../middleware/adminAuth');
 const analyticsAuth = require('../middleware/roleAuth')('admin', 'ads_analyst');
 const upload    = require('../middleware/upload');
-const { optimizeUploadedAsset } = require('../middleware/upload');
+const { optimizeUploadedAsset, cleanupUploadedAssets } = require('../middleware/upload');
 const path      = require('path');
 const fs        = require('fs');
 const adminAuditLog = require('../middleware/adminAuditLog');
+const { productRevision } = require('../services/productRevision');
 
 // Import cache managers from route files
-const APICacheManager = require('../cache/CacheManager');
-
-// Initialize cache managers for invalidation
-const productsCacheManager = new APICacheManager({
-  defaultTTL: 300000,
-  maxSize: 200,
-  enableStats: true,
-});
-
-const wallpapersCacheManager = new APICacheManager({
-  defaultTTL: 300000,
-  maxSize: 200,
-  enableStats: true,
-});
+const { products: productsCacheManager, wallpapers: wallpapersCacheManager } = require('../cache/catalogCaches');
 
 router.use(adminAuditLog);
 router.use('/meta-capi', require('./metaCapi').admin);
 router.use('/marketing-settings', require('./marketingSettings'));
 
-// Cache invalidation middleware
-const invalidateProductsCache = (req, res, next) => {
-  const invalidated = productsCacheManager.invalidate(/GET:\/products/);
-  console.log(`[Cache Invalidation] Invalidated ${invalidated} products cache entries`);
+const invalidateAfterSuccess = (manager, pattern) => (req, res, next) => {
+  const originalSend = res.send.bind(res);
+  let invalidated = false;
+  res.send = (body) => {
+    if (!invalidated && res.statusCode >= 200 && res.statusCode < 300) {
+      invalidated = true;
+      const count = manager.invalidate(pattern);
+      console.log(`[Cache Invalidation] Invalidated ${count} entries after successful mutation`);
+    }
+    return originalSend(body);
+  };
   next();
 };
 
-const invalidateWallpapersCache = (req, res, next) => {
-  const invalidated = wallpapersCacheManager.invalidate(/GET:\/wallpapers/);
-  console.log(`[Cache Invalidation] Invalidated ${invalidated} wallpapers cache entries`);
-  next();
-};
+const invalidateProductsCache = invalidateAfterSuccess(productsCacheManager, /GET:\/api\/products/);
+const invalidateWallpapersCache = invalidateAfterSuccess(wallpapersCacheManager, /GET:\/api\/wallpapers/);
 
 // Helper — URL publik file upload
 const fileUrl = (filename, type = 'images') =>
   filename ? `/uploads/${type}/${path.basename(filename)}` : null;
 
+const normalizeActiveFlag = (value, fallback) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (value === true || value === 1 || value === '1') return 1;
+  if (value === false || value === 0 || value === '0') return 0;
+  return null;
+};
+
+const csvCell = (value) => {
+  const text = String(value ?? '');
+  const literalText = /^[\u0000-\u0020\uFEFF]*[=+\-@]/.test(text) ? `'${text}` : text;
+  return `"${literalText.replace(/"/g, '""')}"`;
+};
+
+const csvNumericCell = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : csvCell(value);
+  const text = String(value).trim();
+  return /^-?\d+(?:\.\d+)?$/.test(text) ? text : csvCell(value);
+};
+
 const IMAGE_MAX = 5  * 1024 * 1024;  //  5 MB
 const MODEL_MAX = 15 * 1024 * 1024;  // 15 MB
 
-// Validasi ukuran per-tipe setelah multer menyimpan file, hapus yang oversized
-function validateFileSizes(req, res) {
+// Reject oversized uploads before image optimization or model processing.
+async function validateFileSizes(req, res, next) {
   const thumb = req.files?.thumbnail?.[0];
   const model = req.files?.model_3d?.[0];
+  let message = null;
 
   if (thumb && thumb.size > IMAGE_MAX) {
-    fs.unlink(thumb.path, () => {});
-    res.status(400).json({ message: `Foto terlalu besar. Maksimal 5 MB (sekarang ${(thumb.size / 1024 / 1024).toFixed(1)} MB).` });
-    return false;
+    message = `Foto terlalu besar. Maksimal 5 MB (sekarang ${(thumb.size / 1024 / 1024).toFixed(1)} MB).`;
   }
-  if (model && model.size > MODEL_MAX) {
-    fs.unlink(model.path, () => {});
-    res.status(400).json({ message: `File 3D terlalu besar. Maksimal 15 MB (sekarang ${(model.size / 1024 / 1024).toFixed(1)} MB). Gunakan Draco compression saat export dari Polycam/KIRI Engine.` });
-    return false;
+  if (!message && model && model.size > MODEL_MAX) {
+    message = `File 3D terlalu besar. Maksimal 15 MB (sekarang ${(model.size / 1024 / 1024).toFixed(1)} MB). Gunakan Draco compression saat export dari Polycam/KIRI Engine.`;
   }
-  return true;
+
+  if (message) {
+    const files = Object.values(req.files || {}).flat();
+    const results = await Promise.allSettled(files.map((file) => fs.promises.unlink(file.path)));
+    results.filter((result) => result.status === 'rejected').forEach((result) => {
+      if (result.reason?.code !== 'ENOENT') console.error('[Upload cleanup] Failed to remove rejected file:', result.reason?.message);
+    });
+    return res.status(400).json({ message });
+  }
+
+  return next();
 }
 
 // ─── PRODUCTS ────────────────────────────────────────────────────────────────
@@ -93,7 +112,7 @@ router.get('/products', adminAuth, async (req, res) => {
     );
     const [count] = await conn.query(`SELECT COUNT(*) as total FROM products p ${clause}`, params);
     res.json({
-      data: rows.map(r => ({ ...r, dimensions: JSON.parse(r.dimensions || '{}'), tags: JSON.parse(r.tags || '[]') })),
+      data: rows.map(r => ({ ...r, revision: productRevision(r), dimensions: JSON.parse(r.dimensions || '{}'), tags: JSON.parse(r.tags || '[]') })),
       total: count[0].total,
     });
   } finally { conn.release(); }
@@ -107,7 +126,7 @@ router.get('/products/:id', adminAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ message: 'Produk tidak ditemukan' });
     const [variants] = await conn.query('SELECT * FROM product_variants WHERE product_id = ?', [req.params.id]);
     const p = rows[0];
-    res.json({ ...p, dimensions: JSON.parse(p.dimensions || '{}'), tags: JSON.parse(p.tags || '[]'), variants });
+    res.json({ ...p, revision: productRevision(p), dimensions: JSON.parse(p.dimensions || '{}'), tags: JSON.parse(p.tags || '[]'), variants });
   } finally { conn.release(); }
 });
 
@@ -118,14 +137,15 @@ router.post('/products',
     { name: 'thumbnail', maxCount: 1 },
     { name: 'model_3d',  maxCount: 1 },
   ]),
+  validateFileSizes,
   optimizeUploadedAsset,
   invalidateProductsCache,
   async (req, res) => {
-    if (!validateFileSizes(req, res)) return;
-
     const { sku, name, category, description, price, width, depth, height, tags, stock } = req.body;
-    if (!sku || !name || !category || !price)
+    if (!sku || !name || !category || !price) {
+      await cleanupUploadedAssets(req);
       return res.status(400).json({ message: 'SKU, nama, kategori, dan harga wajib diisi' });
+    }
 
     const thumbnailPath = req.files?.thumbnail?.[0]?.filename
       ? fileUrl(req.files.thumbnail[0].filename, 'images') : null;
@@ -142,12 +162,19 @@ router.post('/products',
     );
 
     const conn = await pool.getConnection();
+    let transactionOpen = false;
+    let commitAttempted = false;
     try {
+      await conn.beginTransaction();
+      transactionOpen = true;
       const [result] = await conn.query(
         `INSERT INTO products (sku, name, category, description, price, dimensions, thumbnail, model_3d, tags, stock)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [sku, name, category, description || '', parseFloat(price), dimensions, thumbnailPath, modelPath, tagsJson, parseInt(stock) || 0]
       );
+      commitAttempted = true;
+      await conn.commit();
+      transactionOpen = false;
       
       // Include optimization stats in response if available
       const response = { 
@@ -164,6 +191,13 @@ router.post('/products',
       }
       
       res.status(201).json(response);
+    } catch (error) {
+      if (transactionOpen) {
+        await conn.rollback();
+        transactionOpen = false;
+      }
+      if (!commitAttempted) await cleanupUploadedAssets(req);
+      throw error;
     } finally { conn.release(); }
   }
 );
@@ -175,16 +209,38 @@ router.put('/products/:id',
     { name: 'thumbnail', maxCount: 1 },
     { name: 'model_3d',  maxCount: 1 },
   ]),
+  validateFileSizes,
   optimizeUploadedAsset,
   invalidateProductsCache,
   async (req, res) => {
-    if (!validateFileSizes(req, res)) return;
-
-    const { name, category, description, price, width, depth, height, tags, stock, is_active } = req.body;
+    const { name, category, description, price, width, depth, height, tags, stock, is_active, expected_revision } = req.body;
+    if (typeof expected_revision !== 'string' || !/^[a-f0-9]{64}$/.test(expected_revision)) {
+      await cleanupUploadedAssets(req);
+      return res.status(428).json({ message: 'Versi produk diperlukan. Muat ulang produk sebelum menyimpan.' });
+    }
     const conn = await pool.getConnection();
+    let transactionOpen = false;
+    let commitAttempted = false;
     try {
-      const [existing] = await conn.query('SELECT * FROM products WHERE id = ?', [req.params.id]);
-      if (!existing.length) return res.status(404).json({ message: 'Produk tidak ditemukan' });
+      await conn.beginTransaction();
+      transactionOpen = true;
+      const [existing] = await conn.query(
+        'SELECT * FROM products WHERE id = ? FOR UPDATE',
+        [req.params.id]
+      );
+      if (!existing.length) {
+        await conn.rollback();
+        transactionOpen = false;
+        await cleanupUploadedAssets(req);
+        return res.status(404).json({ message: 'Produk tidak ditemukan' });
+      }
+
+      if (productRevision(existing[0]) !== expected_revision) {
+        await conn.rollback();
+        transactionOpen = false;
+        await cleanupUploadedAssets(req);
+        return res.status(409).json({ message: 'Produk berubah sejak preview. Muat ulang preview sebelum menerapkan perubahan.' });
+      }
 
       const thumbnailPath = req.files?.thumbnail?.[0]?.filename
         ? fileUrl(req.files.thumbnail[0].filename, 'images')
@@ -192,6 +248,17 @@ router.put('/products/:id',
       const modelPath = req.files?.model_3d?.[0]?.filename
         ? fileUrl(req.files.model_3d[0].filename, 'models')
         : existing[0].model_3d;
+
+      const activeFlag = normalizeActiveFlag(
+        is_active,
+        Number(existing[0].is_active) === 1 ? 1 : 0
+      );
+      if (activeFlag === null) {
+        await conn.rollback();
+        transactionOpen = false;
+        await cleanupUploadedAssets(req);
+        return res.status(400).json({ message: 'is_active harus berupa boolean atau 0/1' });
+      }
 
       const dimensions = JSON.stringify({
         width:  parseFloat(width)  || 0,
@@ -208,8 +275,11 @@ router.put('/products/:id',
          WHERE id=?`,
         [name, category, description, parseFloat(price), dimensions,
          thumbnailPath, modelPath, tagsJson, parseInt(stock) || 0,
-         is_active === '0' ? 0 : 1, req.params.id]
+         activeFlag, req.params.id]
       );
+      commitAttempted = true;
+      await conn.commit();
+      transactionOpen = false;
       
       // Check for low stock and send notification if needed
       const notificationService = req.app.get('notificationService');
@@ -236,6 +306,15 @@ router.put('/products/:id',
       }
       
       res.json(response);
+    } catch (error) {
+      if (transactionOpen) {
+        await conn.rollback();
+        transactionOpen = false;
+      }
+      // A failed COMMIT acknowledgement is ambiguous: the database may have
+      // committed the new asset reference. Preserve files rather than break it.
+      if (!commitAttempted) await cleanupUploadedAssets(req);
+      throw error;
     } finally { conn.release(); }
   }
 );
@@ -264,6 +343,7 @@ router.get('/products/:id/variants', adminAuth, async (req, res) => {
 router.post('/products/:id/variants',
   adminAuth,
   upload.fields([{ name: 'model_3d', maxCount: 1 }]),
+  validateFileSizes,
   optimizeUploadedAsset,
   invalidateProductsCache,
   async (req, res) => {
@@ -272,12 +352,26 @@ router.post('/products/:id/variants',
       ? fileUrl(req.files.model_3d[0].filename, 'models') : null;
 
     const conn = await pool.getConnection();
+    let transactionOpen = false;
+    let commitAttempted = false;
     try {
+      await conn.beginTransaction();
+      transactionOpen = true;
       const [result] = await conn.query(
         'INSERT INTO product_variants (product_id, name, color, model_3d, stock) VALUES (?, ?, ?, ?, ?)',
         [req.params.id, name, color || null, modelPath, parseInt(stock) || 0]
       );
+      commitAttempted = true;
+      await conn.commit();
+      transactionOpen = false;
       res.status(201).json({ id: result.insertId });
+    } catch (error) {
+      if (transactionOpen) {
+        await conn.rollback();
+        transactionOpen = false;
+      }
+      if (!commitAttempted) await cleanupUploadedAssets(req);
+      throw error;
     } finally { conn.release(); }
   }
 );
@@ -475,26 +569,34 @@ router.get('/wallpapers/:id', adminAuth, async (req, res) => {
 router.post('/wallpapers',
   adminAuth,
   upload.fields([{ name: 'thumbnail', maxCount: 1 }]),
+  validateFileSizes,
   optimizeUploadedAsset,
   invalidateWallpapersCache,
   async (req, res) => {
-    if (!validateFileSizes(req, res)) return;
-
     const { name, category, price_per_meter, texture_pattern, color, description } = req.body;
-    if (!name || !price_per_meter)
+    if (!name || !price_per_meter) {
+      await cleanupUploadedAssets(req);
       return res.status(400).json({ message: 'Nama dan harga per meter wajib diisi' });
+    }
 
     const thumbnailPath = req.files?.thumbnail?.[0]?.filename
       ? fileUrl(req.files.thumbnail[0].filename, 'images') : null;
 
     const conn = await pool.getConnection();
+    let transactionOpen = false;
+    let commitAttempted = false;
     try {
+      await conn.beginTransaction();
+      transactionOpen = true;
       const [result] = await conn.query(
         `INSERT INTO wallpapers (name, category, price_per_meter, thumbnail, texture_pattern, color, description)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [name, category || 'polos', parseFloat(price_per_meter), thumbnailPath,
          texture_pattern || 'plain', color || '#FFFFFF', description || '']
       );
+      commitAttempted = true;
+      await conn.commit();
+      transactionOpen = false;
       
       // Include optimization stats in response if available
       const response = { 
@@ -511,6 +613,13 @@ router.post('/wallpapers',
       }
       
       res.status(201).json(response);
+    } catch (error) {
+      if (transactionOpen) {
+        await conn.rollback();
+        transactionOpen = false;
+      }
+      if (!commitAttempted) await cleanupUploadedAssets(req);
+      throw error;
     } finally { conn.release(); }
   }
 );
@@ -519,16 +628,35 @@ router.post('/wallpapers',
 router.put('/wallpapers/:id',
   adminAuth,
   upload.fields([{ name: 'thumbnail', maxCount: 1 }]),
+  validateFileSizes,
   optimizeUploadedAsset,
   invalidateWallpapersCache,
   async (req, res) => {
-    if (!validateFileSizes(req, res)) return;
-
     const { name, category, price_per_meter, texture_pattern, color, description, is_active } = req.body;
     const conn = await pool.getConnection();
+    let transactionOpen = false;
+    let commitAttempted = false;
     try {
-      const [existing] = await conn.query('SELECT * FROM wallpapers WHERE id = ?', [req.params.id]);
-      if (!existing.length) return res.status(404).json({ message: 'Wallpaper tidak ditemukan' });
+      await conn.beginTransaction();
+      transactionOpen = true;
+      const [existing] = await conn.query('SELECT * FROM wallpapers WHERE id = ? FOR UPDATE', [req.params.id]);
+      if (!existing.length) {
+        await conn.rollback();
+        transactionOpen = false;
+        await cleanupUploadedAssets(req);
+        return res.status(404).json({ message: 'Wallpaper tidak ditemukan' });
+      }
+
+      const activeFlag = normalizeActiveFlag(
+        is_active,
+        Number(existing[0].is_active) === 1 ? 1 : 0
+      );
+      if (activeFlag === null) {
+        await conn.rollback();
+        transactionOpen = false;
+        await cleanupUploadedAssets(req);
+        return res.status(400).json({ message: 'is_active harus berupa boolean atau 0/1' });
+      }
 
       const thumbnailPath = req.files?.thumbnail?.[0]?.filename
         ? fileUrl(req.files.thumbnail[0].filename, 'images')
@@ -540,8 +668,11 @@ router.put('/wallpapers/:id',
          WHERE id=?`,
         [name, category, parseFloat(price_per_meter), thumbnailPath,
          texture_pattern || 'plain', color || '#FFFFFF', description || '',
-         is_active === '0' ? 0 : 1, req.params.id]
+         activeFlag, req.params.id]
       );
+      commitAttempted = true;
+      await conn.commit();
+      transactionOpen = false;
       
       // Include optimization stats in response if available
       const response = { message: 'Wallpaper diperbarui' };
@@ -555,6 +686,13 @@ router.put('/wallpapers/:id',
       }
       
       res.json(response);
+    } catch (error) {
+      if (transactionOpen) {
+        await conn.rollback();
+        transactionOpen = false;
+      }
+      if (!commitAttempted) await cleanupUploadedAssets(req);
+      throw error;
     } finally { conn.release(); }
   }
 );
@@ -705,17 +843,17 @@ router.get('/orders/export', adminAuth, async (req, res) => {
       };
 
       csv += [
-        `"${row.order_code}"`,
-        `"${row.customer_name || ''}"`,
-        `"${row.customer_email || ''}"`,
-        `"${row.customer_phone || ''}"`,
-        `"${row.status}"`,
-        row.subtotal,
-        row.shipping_cost,
-        row.discount,
-        row.total,
-        `"${formatDate(row.created_at)}"`,
-        `"${formatDate(row.updated_at)}"`,
+        csvCell(row.order_code),
+        csvCell(row.customer_name),
+        csvCell(row.customer_email),
+        csvCell(row.customer_phone),
+        csvCell(row.status),
+        csvNumericCell(row.subtotal),
+        csvNumericCell(row.shipping_cost),
+        csvNumericCell(row.discount),
+        csvNumericCell(row.total),
+        csvCell(formatDate(row.created_at)),
+        csvCell(formatDate(row.updated_at)),
       ].join(',') + '\n';
     });
 
@@ -840,11 +978,32 @@ router.post('/orders', adminAuth, async (req, res) => {
   }
 
   const conn = await pool.getConnection();
+  let orderCodeLockName = null;
+  let connectionDestroyed = false;
+  const releaseOrderCodeLock = async () => {
+    if (!orderCodeLockName) return;
+    const lockName = orderCodeLockName;
+    orderCodeLockName = null;
+    try {
+      const [released] = await conn.query('SELECT RELEASE_LOCK(?) AS released', [lockName]);
+      if (Number(released[0]?.released) !== 1) {
+        console.error('[Orders] Could not release order code lock; destroying its connection.');
+        conn.destroy();
+        connectionDestroyed = true;
+      }
+    } catch (error) {
+      console.error('[Orders] Could not release order code lock; destroying its connection:', error.message);
+      conn.destroy();
+      connectionDestroyed = true;
+    }
+  };
   try {
     await conn.beginTransaction();
 
     // Generate order code
-    const order_code = await generateOrderCode();
+    const generatedCode = await generateOrderCode(conn);
+    const order_code = generatedCode.orderCode;
+    orderCodeLockName = generatedCode.lockName;
 
     // Calculate subtotal
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -869,6 +1028,7 @@ router.post('/orders', adminAuth, async (req, res) => {
     }
 
     await conn.commit();
+    await releaseOrderCodeLock();
 
     res.status(201).json({
       id: orderId,
@@ -876,11 +1036,16 @@ router.post('/orders', adminAuth, async (req, res) => {
       message: 'Pesanan berhasil dibuat',
     });
   } catch (error) {
-    await conn.rollback();
+    try {
+      await conn.rollback();
+    } catch (rollbackError) {
+      console.error('[Orders] Create rollback error:', rollbackError.message);
+    }
     console.error('[Orders] Create error:', error);
     res.status(500).json({ message: 'Gagal membuat pesanan' });
   } finally {
-    conn.release();
+    await releaseOrderCodeLock();
+    if (!connectionDestroyed) conn.release();
   }
 });
 
@@ -894,9 +1059,15 @@ router.put('/orders/:id/status', adminAuth, async (req, res) => {
 
   const conn = await pool.getConnection();
   try {
-    // Get current order
-    const [orders] = await conn.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+    await conn.beginTransaction();
+
+    // Lock the row before validating its transition so concurrent updates serialize.
+    const [orders] = await conn.query(
+      'SELECT * FROM orders WHERE id = ? FOR UPDATE',
+      [req.params.id]
+    );
     if (!orders.length) {
+      await conn.rollback();
       return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
     }
 
@@ -914,12 +1085,11 @@ router.put('/orders/:id/status', adminAuth, async (req, res) => {
     };
 
     if (!validTransitions[oldStatus].includes(newStatus)) {
+      await conn.rollback();
       return res.status(400).json({ 
         message: `Transisi status dari ${oldStatus} ke ${newStatus} tidak diperbolehkan` 
       });
     }
-
-    await conn.beginTransaction();
 
     // Update order status
     await conn.query(
@@ -1084,6 +1254,20 @@ router.put('/orders/:id', adminAuth, async (req, res) => {
 
     await conn.beginTransaction();
 
+    // Recheck editability under the same row lock used by status transitions.
+    const [lockedOrders] = await conn.query(
+      'SELECT status FROM orders WHERE id = ? FOR UPDATE',
+      [req.params.id]
+    );
+    if (!lockedOrders.length) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Pesanan tidak ditemukan' });
+    }
+    if (lockedOrders[0].status !== 'pending') {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Hanya pesanan dengan status pending yang dapat diedit' });
+    }
+
     // Calculate new subtotal and total
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const total = subtotal + parseFloat(shipping_cost) - parseFloat(discount);
@@ -1189,6 +1373,8 @@ router.put('/users/:id/status', adminAuth, async (req, res) => {
       'UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, req.params.id]
     );
+
+    req.app.get('io')?.in(`user_${req.params.id}`).disconnectSockets(true);
 
     // Log administrative action for audit
     const action = status === 'blocked' ? 'blocked' : 'unblocked';
@@ -1324,6 +1510,8 @@ router.put('/users/:id/role', adminAuth, async (req, res) => {
       'UPDATE users SET role = ?, updated_at = NOW() WHERE id = ?',
       [role, req.params.id]
     );
+
+    req.app.get('io')?.in(`user_${req.params.id}`).disconnectSockets(true);
 
     // Log administrative action for audit
     console.log(`[Admin ${req.user.id}] changed role for user ${req.params.id} (${user.email}) from ${oldRole} to ${role} at ${new Date().toISOString()}`);
@@ -1479,17 +1667,16 @@ router.get('/users/export', adminAuth, async (req, res) => {
         });
       };
 
-      // Quote text fields to handle commas in names/emails
       csv += [
-        row.id,
-        `"${row.name || ''}"`,
-        `"${row.email || ''}"`,
-        `"${row.role}"`,
-        `"${row.status}"`,
-        `"${formatDate(row.created_at)}"`,
-        `"${formatDate(row.updated_at)}"`,
-        row.total_spent,
-        row.order_count,
+        csvNumericCell(row.id),
+        csvCell(row.name),
+        csvCell(row.email),
+        csvCell(row.role),
+        csvCell(row.status),
+        csvCell(formatDate(row.created_at)),
+        csvCell(formatDate(row.updated_at)),
+        csvNumericCell(row.total_spent),
+        csvNumericCell(row.order_count),
       ].join(',') + '\n';
     });
 

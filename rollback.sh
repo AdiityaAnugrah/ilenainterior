@@ -4,6 +4,8 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$ROOT_DIR/.deploy"
 LAST_SUCCESS_FILE="$STATE_DIR/last_successful_commit"
+PREVIOUS_SUCCESS_FILE="$STATE_DIR/previous_successful_commit"
+DEPLOY_IN_PROGRESS_FILE="$STATE_DIR/deploy_in_progress"
 
 TARGET="${1:-last}"
 BRANCH="${BRANCH:-main}"
@@ -25,6 +27,14 @@ log() {
   printf '[rollback] %s\n' "$*"
 }
 
+write_marker() {
+  local path="$1"
+  local value="$2"
+  local temp="${path}.tmp.$$"
+  printf '%s\n' "$value" > "$temp"
+  mv -f "$temp" "$path"
+}
+
 die() {
   printf '[rollback] ERROR: %s\n' "$*" >&2
   exit 1
@@ -32,6 +42,12 @@ die() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
+}
+
+require_clean_worktree() {
+  local status
+  status="$(git -C "$ROOT_DIR" status --porcelain --untracked-files=all)"
+  [[ -z "$status" ]] || die "Working tree is not clean; commit or remove local changes before deploy/rollback."
 }
 
 if [[ "${TARGET:-}" == "-h" || "${TARGET:-}" == "--help" ]]; then
@@ -46,11 +62,18 @@ require_cmd pm2
 [[ -d "$ROOT_DIR/.git" ]] || die "Not a git repository: $ROOT_DIR"
 [[ -d "$ROOT_DIR/frontend" ]] || die "Missing directory: $ROOT_DIR/frontend"
 [[ -d "$ROOT_DIR/backend" ]] || die "Missing directory: $ROOT_DIR/backend"
+require_clean_worktree
 
 if [[ "$TARGET" == "last" ]]; then
-  [[ -f "$LAST_SUCCESS_FILE" ]] || die "Missing $LAST_SUCCESS_FILE. Run a successful deploy first or pass commit SHA manually."
-  TARGET="$(tr -d '[:space:]' < "$LAST_SUCCESS_FILE")"
-  [[ -n "$TARGET" ]] || die "Last successful commit file is empty."
+  if [[ -f "$DEPLOY_IN_PROGRESS_FILE" ]]; then
+    [[ -f "$LAST_SUCCESS_FILE" ]] || die "Interrupted first deploy has no previous successful commit to restore."
+    TARGET="$(tr -d '[:space:]' < "$LAST_SUCCESS_FILE")"
+    [[ -n "$TARGET" ]] || die "Last successful commit file is empty."
+  else
+    [[ -f "$PREVIOUS_SUCCESS_FILE" ]] || die "Missing $PREVIOUS_SUCCESS_FILE. Deploy a newer release before rolling back to last."
+    TARGET="$(tr -d '[:space:]' < "$PREVIOUS_SUCCESS_FILE")"
+    [[ -n "$TARGET" ]] || die "Previous successful commit file is empty."
+  fi
 fi
 
 if ! git -C "$ROOT_DIR" cat-file -e "${TARGET}^{commit}" 2>/dev/null; then
@@ -61,6 +84,9 @@ fi
 
 FRONTEND_PM2_NAME="${FRONTEND_PM2_NAME:-ilena-frontend}"
 BACKEND_PM2_NAME="${BACKEND_PM2_NAME:-ilena-backend}"
+PUBLIC_URL="${PUBLIC_URL:-https://ilenafurniture.net}"
+BACKEND_HEALTH_URL="${BACKEND_HEALTH_URL:-$PUBLIC_URL/api/health}"
+require_cmd curl
 
 CURRENT_BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD || true)"
 CURRENT_COMMIT="$(git -C "$ROOT_DIR" rev-parse HEAD)"
@@ -77,6 +103,20 @@ npm --prefix "$ROOT_DIR/backend" ci
 pm2 restart "$FRONTEND_PM2_NAME" --update-env
 pm2 restart "$BACKEND_PM2_NAME" --update-env
 pm2 save
+
+log "Checking backend health: $BACKEND_HEALTH_URL"
+curl -fsS "$BACKEND_HEALTH_URL" >/dev/null
+log "Checking frontend response: $PUBLIC_URL"
+curl -fsS "$PUBLIC_URL/" >/dev/null
+
+if [[ -f "$LAST_SUCCESS_FILE" ]]; then
+  PRIOR_SUCCESS="$(tr -d '[:space:]' < "$LAST_SUCCESS_FILE")"
+  if [[ -n "$PRIOR_SUCCESS" && "$PRIOR_SUCCESS" != "$TARGET" ]]; then
+    write_marker "$PREVIOUS_SUCCESS_FILE" "$PRIOR_SUCCESS"
+  fi
+fi
+write_marker "$LAST_SUCCESS_FILE" "$TARGET"
+rm -f "$DEPLOY_IN_PROGRESS_FILE"
 
 log "Rollback deployed at commit $TARGET"
 log "To continue normal deploy flow:"

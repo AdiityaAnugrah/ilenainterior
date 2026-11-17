@@ -19,7 +19,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            val debugApiUrl = providers.gradleProperty("apiBaseUrl").orElse("http://10.0.2.2:5000").get()
+            buildConfigField("String", "API_BASE_URL", "\"$debugApiUrl\"")
+        }
         release {
+            val releaseApiUrl = providers.gradleProperty("releaseApiBaseUrl").orElse("https://ilenafurniture.net").get()
+            buildConfigField("String", "API_BASE_URL", "\"$releaseApiUrl\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -35,6 +41,7 @@ android {
         jvmTarget = "11"
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }

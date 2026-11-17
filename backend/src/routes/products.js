@@ -1,14 +1,7 @@
 const router = require('express').Router();
 const pool = require('../config/db');
-const APICacheManager = require('../cache/CacheManager');
+const cacheManager = require('../cache/catalogCaches').products;
 const queryOptimizer = require('../database/QueryOptimizer');
-
-// Initialize cache manager with appropriate TTL
-const cacheManager = new APICacheManager({
-  defaultTTL: 300000, // 5 minutes default
-  maxSize: 200,
-  enableStats: true,
-});
 
 // Cache middleware with custom TTL for different routes
 const cacheMiddleware = (ttl) => {
@@ -35,14 +28,6 @@ const cacheMiddleware = (ttl) => {
 
     next();
   };
-};
-
-// Cache invalidation middleware for mutations
-const invalidateProductsCache = (req, res, next) => {
-  // Invalidate all products-related cache entries
-  const invalidated = cacheManager.invalidate(/GET:\/products/);
-  console.log(`[Cache Invalidation] Invalidated ${invalidated} products cache entries`);
-  next();
 };
 
 // GET all products dengan filter & search
@@ -76,9 +61,8 @@ router.get('/', cacheMiddleware(300000), async (req, res) => { // 5 minutes cach
   const sortOrder = order === 'ASC' ? 'ASC' : 'DESC';
 
   try {
-    // OPTIMIZED: Single query with GROUP_CONCAT to avoid N+1 problem
-    // Compatible with MySQL 5.7+ (JSON_ARRAYAGG requires MySQL 8.0+)
-    // Uses indexes: idx_products_is_active, idx_products_category, idx_products_created_at, idx_variants_product_id
+    // Fetch one product page, then fetch its variants in one set-based query.
+    // This avoids N+1 queries without encoding nullable values into delimiters.
     const rows = await queryOptimizer.execute(
       `SELECT 
         p.id,
@@ -95,17 +79,9 @@ router.get('/', cacheMiddleware(300000), async (req, res) => { // 5 minutes cach
         p.stock,
         p.is_active,
         p.created_at,
-        p.updated_at,
-        GROUP_CONCAT(
-          DISTINCT CONCAT_WS('|', pv.id, pv.name, pv.color, pv.model_3d, pv.stock)
-          SEPARATOR ';;'
-        ) as variants_raw
+        p.updated_at
       FROM products p
-      LEFT JOIN product_variants pv ON pv.product_id = p.id
       ${whereClause}
-      GROUP BY p.id, p.sku, p.name, p.category, p.description, p.price, p.dimensions, 
-               p.thumbnail, p.model_3d, p.model_2d_topdown, p.tags, p.stock, p.is_active, 
-               p.created_at, p.updated_at
       ORDER BY ${sortCol} ${sortOrder}
       LIMIT ? OFFSET ?`,
       [...params, parseInt(limit), offset]
@@ -118,16 +94,31 @@ router.get('/', cacheMiddleware(300000), async (req, res) => { // 5 minutes cach
       params
     );
 
-    // Parse variants from GROUP_CONCAT result
-    const products = rows.map(r => {
-      let variants = [];
-      if (r.variants_raw) {
-        variants = r.variants_raw.split(';;').map(v => {
-          const [id, name, color, model_3d, stock] = v.split('|');
-          return { id: parseInt(id), name, color, model_3d, stock: parseInt(stock) };
+    const variantsByProduct = new Map();
+    if (rows.length > 0) {
+      const productIds = rows.map((row) => row.id);
+      const placeholders = productIds.map(() => '?').join(',');
+      const variantRows = await queryOptimizer.execute(
+        `SELECT id, product_id, name, color, model_3d, stock
+         FROM product_variants
+         WHERE product_id IN (${placeholders})
+         ORDER BY product_id, id`,
+        productIds
+      );
+      for (const variant of variantRows) {
+        const variants = variantsByProduct.get(variant.product_id) || [];
+        variants.push({
+          id: Number(variant.id),
+          name: variant.name,
+          color: variant.color,
+          model_3d: variant.model_3d,
+          stock: variant.stock === null ? null : Number(variant.stock),
         });
+        variantsByProduct.set(variant.product_id, variants);
       }
-      
+    }
+
+    const products = rows.map(r => {
       return {
         id: r.id,
         sku: r.sku,
@@ -144,7 +135,7 @@ router.get('/', cacheMiddleware(300000), async (req, res) => { // 5 minutes cach
         is_active: r.is_active,
         created_at: r.created_at,
         updated_at: r.updated_at,
-        variants,
+        variants: variantsByProduct.get(r.id) || [],
       };
     });
 
@@ -163,8 +154,7 @@ router.get('/', cacheMiddleware(300000), async (req, res) => { // 5 minutes cach
 // GET single product
 router.get('/:id', cacheMiddleware(600000), async (req, res) => { // 10 minutes cache
   try {
-    // OPTIMIZED: Single query with GROUP_CONCAT (compatible with MySQL 5.7+)
-    // Uses indexes: PRIMARY KEY on p.id, idx_variants_product_id for JOIN
+    // Fetch the product and variants separately to preserve NULLs and delimiters.
     const rows = await queryOptimizer.execute(
       `SELECT 
         p.id,
@@ -181,30 +171,27 @@ router.get('/:id', cacheMiddleware(600000), async (req, res) => { // 10 minutes 
         p.stock,
         p.is_active,
         p.created_at,
-        p.updated_at,
-        GROUP_CONCAT(
-          DISTINCT CONCAT_WS('|', pv.id, pv.name, pv.color, pv.model_3d, pv.stock)
-          SEPARATOR ';;'
-        ) as variants_raw
+        p.updated_at
       FROM products p
-      LEFT JOIN product_variants pv ON pv.product_id = p.id
       WHERE p.id = ? AND p.is_active = 1
-      GROUP BY p.id, p.sku, p.name, p.category, p.description, p.price, p.dimensions, 
-               p.thumbnail, p.model_3d, p.model_2d_topdown, p.tags, p.stock, p.is_active, 
-               p.created_at, p.updated_at`,
+      `,
       [req.params.id]
     );
 
     if (rows.length === 0) return res.status(404).json({ message: 'Produk tidak ditemukan' });
 
-    // Parse variants from GROUP_CONCAT result
-    let variants = [];
-    if (rows[0].variants_raw) {
-      variants = rows[0].variants_raw.split(';;').map(v => {
-        const [id, name, color, model_3d, stock] = v.split('|');
-        return { id: parseInt(id), name, color, model_3d, stock: parseInt(stock) };
-      });
-    }
+    const variantRows = await queryOptimizer.execute(
+      `SELECT id, product_id, name, color, model_3d, stock
+       FROM product_variants WHERE product_id = ? ORDER BY id`,
+      [rows[0].id]
+    );
+    const variants = variantRows.map((variant) => ({
+      id: Number(variant.id),
+      name: variant.name,
+      color: variant.color,
+      model_3d: variant.model_3d,
+      stock: variant.stock === null ? null : Number(variant.stock),
+    }));
 
     const product = {
       id: rows[0].id,

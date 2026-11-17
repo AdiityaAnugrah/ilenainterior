@@ -36,24 +36,29 @@ export default function CatalogPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetch = async () => {
       setLoading(true);
       try {
         const params: Record<string, string> = { page: String(page), limit: '20', sort };
         if (search) params.search = search;
         if (category !== 'all') params.category = category;
-        const { data } = await api.get('/api/products', { params });
+        const { data } = await api.get('/api/products', { params, signal: controller.signal });
         setProducts(data.data);
         setTotal(data.total);
         setTotalPages(data.totalPages);
       } catch {
-        setProducts([]);
+        if (!controller.signal.aborted) setProducts([]);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
     const t = setTimeout(fetch, 300);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [search, category, sort, page]);
 
   return (

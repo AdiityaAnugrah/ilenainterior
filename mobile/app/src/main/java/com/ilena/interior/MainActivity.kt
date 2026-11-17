@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import com.ilena.interior.ui.CatalogScreen
+import com.ilena.interior.data.Session
 import com.ilena.interior.ui.LoginScreen
 import com.ilena.interior.ui.RegisterScreen
 import com.ilena.interior.ui.theme.ILENAINTERIORTheme
@@ -40,7 +41,7 @@ private fun App() {
         var userName by rememberSaveable { mutableStateOf<String?>(null) }
         var showRegister by rememberSaveable { mutableStateOf(false) }
         when {
-            userName != null -> CatalogScreen(userName = userName!!)
+            userName != null && Session.token != null -> CatalogScreen(userName = userName!!)
             showRegister -> RegisterScreen(
                 onRegistered = { userName = it },
                 onBackToLogin = { showRegister = false },

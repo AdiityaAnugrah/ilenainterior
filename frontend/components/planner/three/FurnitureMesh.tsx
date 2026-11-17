@@ -12,6 +12,7 @@ import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Create AssetLoader instance with CacheManager and MemoryManager
 const assetLoader = createAssetLoader(globalCacheManager);
+const activeModelUseCounts = new Map<string, number>();
 
 // ErrorBoundary — tangkap error useTexture/useGLTF lalu render fallback
 class ThreeErrorBoundary extends Component<
@@ -137,6 +138,7 @@ interface FurnitureMeshProps {
  */
 function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimensions']; itemId: string }) {
   const [gltf, setGltf] = useState<GLTF | null>(null);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -182,6 +184,7 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
       console.log(`[GLBModel] Triggering model reload for recovery: ${itemId}`);
       setIsRecovering(true);
       setGltf(null); // Clear current model to trigger reload
+      setLoadedUrl(null);
       setLoading(true); // Set loading state to show recovery indicator
       setError(null); // Clear any previous errors
       setLoadProgress(0); // Reset progress
@@ -205,6 +208,8 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
 
     const loadModel = async () => {
       try {
+        setGltf(null);
+        setLoadedUrl(null);
         setLoading(true);
         setError(null);
         setLoadProgress(0);
@@ -280,6 +285,7 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
             setIsRecovering(false);
           }
           setGltf(result.data);
+          setLoadedUrl(url);
           setLoading(false);
           setIsLowRes(false);
           
@@ -316,6 +322,30 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
     }
 
     const cloned = gltf.scene.clone(true);
+    const materialClones = new Map<THREE.Material, THREE.Material>();
+    const cloneMaterial = (source: THREE.Material) => {
+      const existing = materialClones.get(source);
+      if (existing) return existing;
+      const copy = source.clone();
+      for (const [key, value] of Object.entries(copy)) {
+        if (value instanceof THREE.Texture) {
+          (copy as unknown as Record<string, unknown>)[key] = value.clone();
+        }
+      }
+      materialClones.set(source, copy);
+      return copy;
+    };
+
+    // Quality adjustments below mutate materials and sampler state, so clone
+    // both per-instance materials and their texture objects, never cached GLTF assets.
+    cloned.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const mesh = obj as THREE.Mesh;
+        mesh.material = Array.isArray(mesh.material)
+          ? mesh.material.map(cloneMaterial)
+          : cloneMaterial(mesh.material);
+      }
+    });
 
     // Fix: setelah Meshopt/quantize compression, geometry boundingSphere &
     // boundingBox bisa stale → frustum culler mengira mesh di luar view →
@@ -343,6 +373,38 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
       minY: box.min.y,
     };
   }, [gltf, dims.width, dims.height, dims.depth]);
+
+  useEffect(() => {
+    if (!cloned) return;
+    const ownedMaterials = new Set<THREE.Material>();
+    const ownedTextures = new Set<THREE.Texture>();
+    cloned.traverse((obj) => {
+      if (!(obj as THREE.Mesh).isMesh) return;
+      const materials = Array.isArray((obj as THREE.Mesh).material)
+        ? (obj as THREE.Mesh).material
+        : [(obj as THREE.Mesh).material];
+      for (const material of materials) {
+        ownedMaterials.add(material);
+        for (const value of Object.values(material)) {
+          if (value instanceof THREE.Texture) ownedTextures.add(value);
+        }
+      }
+    });
+    return () => {
+      ownedTextures.forEach((texture) => texture.dispose());
+      ownedMaterials.forEach((material) => material.dispose());
+    };
+  }, [cloned]);
+
+  useEffect(() => {
+    if (!gltf || !loadedUrl) return;
+    activeModelUseCounts.set(loadedUrl, (activeModelUseCounts.get(loadedUrl) ?? 0) + 1);
+    return () => {
+      const remaining = (activeModelUseCounts.get(loadedUrl) ?? 1) - 1;
+      if (remaining <= 0) activeModelUseCounts.delete(loadedUrl);
+      else activeModelUseCounts.set(loadedUrl, remaining);
+    };
+  }, [gltf, loadedUrl]);
 
   // Task 8.1/8.2 dihapus: "rendering state validation" lama justru
   // BIKIN model hilang random. Skemanya: tiap 5 detik cek cloned.parent.
@@ -468,9 +530,12 @@ function GLBModel({ url, dims, itemId }: { url: string; dims: PlacedItem['dimens
             // Evict LRU entries to free up memory
             // This will remove least recently used cached models
             const cacheEntriesBefore = globalCacheManager.getEntries();
-            const oldestEntries = cacheEntriesBefore
+            const inactiveEntries = cacheEntriesBefore.filter((entry) =>
+              !activeModelUseCounts.has(entry.key)
+            );
+            const oldestEntries = inactiveEntries
               .sort((a, b) => a.lastAccessed - b.lastAccessed)
-              .slice(0, Math.floor(cacheEntriesBefore.length * 0.3)); // Remove oldest 30%
+              .slice(0, Math.floor(inactiveEntries.length * 0.3)); // Remove oldest 30% of unmounted models
             
             let disposedCacheCount = 0;
             oldestEntries.forEach((entry) => {

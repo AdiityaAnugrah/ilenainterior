@@ -13,6 +13,9 @@ router.get('/', async (req, res) => {
 });
 router.put('/', async (req, res) => {
   const entries = Object.entries(req.body || {});
+  if (req.user.role !== 'admin' && entries.some(([key]) => key === 'google_tag_manager_id')) {
+    return res.status(403).json({ message: 'Hanya admin yang dapat mengubah container Google Tag Manager' });
+  }
   if (!entries.length || entries.some(([key, value]) => !Object.hasOwn(patterns, key) || typeof value !== 'string' || value.length > 100 || (value.trim() && !patterns[key].test(value.trim())))) {
     return res.status(400).json({ message: 'Pengaturan tracking tidak valid' });
   }

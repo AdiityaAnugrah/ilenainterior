@@ -82,12 +82,14 @@ interface EditorState {
 
   // Rarely changing state
   projectId: number | null;
+  projectRevision: string | null;
   projectName: string;
   roomConfig: RoomConfig;
   currentStep: number;
 
   // Actions
   setProjectId: (id: number) => void;
+  setProjectRevision: (revision: string | null) => void;
   setProjectName: (name: string) => void;
   setRoomConfig: (config: Partial<RoomConfig>) => void;
   setViewMode: (mode: ViewMode) => void;
@@ -105,7 +107,7 @@ interface EditorState {
   undo: () => void;
   redo: () => void;
 
-  loadProject: (id: number, name: string, config: Partial<RoomConfig>, items: PlacedItem[]) => void;
+  loadProject: (id: number, name: string, config: Partial<RoomConfig>, items: PlacedItem[], revision?: string) => void;
   totalFurniturePrice: () => number;
   totalWallpaperPrice: () => number;
   totalPrice: () => number;
@@ -139,11 +141,13 @@ export const useEditorStore = create<EditorState>()(
 
   // Rarely changing state
   projectId: null,
+  projectRevision: null,
   projectName: 'Proyek Baru',
   roomConfig: DEFAULT_ROOM,
   currentStep: 1,
 
   setProjectId: (id) => set({ projectId: id }),
+  setProjectRevision: (revision) => set({ projectRevision: revision }),
   setProjectName: (name) => set({ projectName: name }),
   setRoomConfig: (config) => set((s) => ({ roomConfig: { ...s.roomConfig, ...config } })),
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -187,10 +191,11 @@ export const useEditorStore = create<EditorState>()(
     }));
   },
 
-  loadProject: (id, name, config, items) => {
+  loadProject: (id, name, config, items, revision) => {
     const newHistory = [items];
     set({
       projectId: id,
+      projectRevision: revision ?? null,
       projectName: name,
       roomConfig: { ...DEFAULT_ROOM, ...config },
       items,
@@ -242,6 +247,7 @@ export const useEditorStore = create<EditorState>()(
   reset: () =>
     set({
       projectId: null,
+      projectRevision: null,
       projectName: 'Proyek Baru',
       roomConfig: DEFAULT_ROOM,
       items: [],
@@ -260,6 +266,7 @@ export const useEditorStore = create<EditorState>()(
         items:        state.items,
         currentStep:  state.currentStep,
         projectId:    state.projectId,
+        projectRevision: state.projectRevision,
         projectName:  state.projectName,
       }),
       onRehydrateStorage: () => (state) => {

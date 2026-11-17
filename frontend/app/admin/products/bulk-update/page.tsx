@@ -15,6 +15,7 @@ interface CurrentProduct {
   price: number; stock: number;
   width: number; depth: number; height: number;
   description: string; tags: string; is_active: number;
+  revision: string;
   thumbnail: string | null; model_3d: string | null;
 }
 
@@ -205,6 +206,7 @@ export default function ProductsBulkUpdatePage() {
         fd.append('tags',        String(pick('tags') ?? ''));
         fd.append('stock',       String(pick('stock')));
         fd.append('is_active',   String(pick('is_active')));
+        fd.append('expected_revision', cur.revision);
         if (thumb) fd.append('thumbnail', thumb);
         if (model) fd.append('model_3d',  model);
 

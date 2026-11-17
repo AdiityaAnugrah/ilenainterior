@@ -17,7 +17,7 @@ async function runMigration() {
     const [constraints] = await conn.query(`
       SELECT CONSTRAINT_NAME 
       FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
-      WHERE TABLE_SCHEMA = 'ilena_interior' 
+      WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'orders' 
         AND COLUMN_NAME = 'user_id' 
         AND REFERENCED_TABLE_NAME = 'users'
@@ -29,36 +29,39 @@ async function runMigration() {
       
       // Drop the foreign key constraint
       console.log(`\nDropping foreign key constraint ${constraintName}...`);
-      await conn.query(`ALTER TABLE orders DROP FOREIGN KEY ${constraintName}`);
+      await conn.query('ALTER TABLE ?? DROP FOREIGN KEY ??', ['orders', constraintName]);
       console.log('✓ Foreign key constraint dropped successfully');
-      
-      // Add index for performance if it doesn't exist
-      console.log('\nAdding index on user_id for query performance...');
-      try {
-        await conn.query('CREATE INDEX idx_user_id ON orders(user_id)');
-        console.log('✓ Index created successfully');
-      } catch (err) {
-        if (err.code === 'ER_DUP_KEYNAME') {
-          console.log('✓ Index already exists');
-        } else {
-          throw err;
-        }
-      }
-      
-      console.log('\n✓ Migration completed successfully!');
-      console.log('\nUsers can now be deleted while preserving their order history.');
     } else {
       console.log('✓ No foreign key constraint found - migration not needed');
     }
 
-  } catch (error) {
-    console.error('✗ Migration failed:', error.message);
-    process.exit(1);
+    // Ensure the lookup index even when a previous run dropped the foreign key
+    // but failed before creating the index.
+    console.log('\nEnsuring index on orders.user_id...');
+    try {
+      await conn.query('CREATE INDEX ?? ON ?? (??)', ['idx_user_id', 'orders', 'user_id']);
+      console.log('✓ Index created successfully');
+    } catch (err) {
+      if (err.code === 'ER_DUP_KEYNAME') {
+        console.log('✓ Index already exists');
+      } else {
+        throw err;
+      }
+    }
+
+    console.log('\n✓ Migration completed successfully!');
+    console.log('\nUsers can now be deleted while preserving their order history.');
+
   } finally {
-    if (conn) conn.release();
-    await pool.end();
-    process.exit(0);
+    try {
+      if (conn) conn.release();
+    } finally {
+      await pool.end();
+    }
   }
 }
 
-runMigration();
+runMigration().catch((error) => {
+  console.error('✗ Migration failed:', error.message);
+  process.exitCode = 1;
+});

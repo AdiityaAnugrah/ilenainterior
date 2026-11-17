@@ -31,6 +31,8 @@ io.on('connection', (socket) => {
   const userId = socket.userId;
   const userName = socket.userName;
 
+  socket.join(`user_${userId}`);
+
   console.log(`✅ Admin connected: ${userName} (ID: ${userId}, Socket: ${socket.id})`);
 
   // Track connection

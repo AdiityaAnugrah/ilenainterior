@@ -18,9 +18,11 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     try {
-      // 1. Hapus semua cache milik origin ini.
+      // 1. Hapus hanya cache yang dimiliki aplikasi ini.
       const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      await Promise.all(cacheNames
+        .filter((name) => name.startsWith('ilena-'))
+        .map((name) => caches.delete(name)));
     } catch (err) {
       // ignore
     }

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
@@ -35,12 +36,24 @@ DB_PASSWORD="${DB_PASSWORD:-}"
 command -v mysqldump >/dev/null 2>&1 || die "mysqldump not found"
 command -v gzip >/dev/null 2>&1 || die "gzip not found"
 command -v tar >/dev/null 2>&1 || die "tar not found"
+command -v mktemp >/dev/null 2>&1 || die "mktemp not found"
+command -v chmod >/dev/null 2>&1 || die "chmod not found"
 
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+
+DB_TMP=""
+UPLOADS_TMP=""
+cleanup_temp_files() {
+  [[ -z "$DB_TMP" ]] || rm -f -- "$DB_TMP"
+  [[ -z "$UPLOADS_TMP" ]] || rm -f -- "$UPLOADS_TMP"
+}
+trap cleanup_temp_files EXIT
 
 STAMP="$(date +'%Y%m%d-%H%M%S')"
 DB_OUT="$BACKUP_DIR/db-$DB_NAME-$STAMP.sql.gz"
 UPLOADS_OUT="$BACKUP_DIR/uploads-$STAMP.tar.gz"
+DB_TMP="$(mktemp "${DB_OUT}.tmp.XXXXXX")"
 
 log "Backing up database $DB_NAME to $DB_OUT"
 MYSQL_PWD="$DB_PASSWORD" mysqldump \
@@ -51,11 +64,16 @@ MYSQL_PWD="$DB_PASSWORD" mysqldump \
   --quick \
   --routines \
   --triggers \
-  "$DB_NAME" | gzip > "$DB_OUT"
+  "$DB_NAME" | gzip > "$DB_TMP"
+mv -f -- "$DB_TMP" "$DB_OUT"
+DB_TMP=""
 
 if [[ -d "$UPLOADS_DIR" ]]; then
   log "Backing up uploads $UPLOADS_DIR to $UPLOADS_OUT"
-  tar -C "$(dirname "$UPLOADS_DIR")" -czf "$UPLOADS_OUT" "$(basename "$UPLOADS_DIR")"
+  UPLOADS_TMP="$(mktemp "${UPLOADS_OUT}.tmp.XXXXXX")"
+  tar -C "$(dirname "$UPLOADS_DIR")" -czf "$UPLOADS_TMP" "$(basename "$UPLOADS_DIR")"
+  mv -f -- "$UPLOADS_TMP" "$UPLOADS_OUT"
+  UPLOADS_TMP=""
 else
   log "Uploads directory not found, skipping: $UPLOADS_DIR"
 fi

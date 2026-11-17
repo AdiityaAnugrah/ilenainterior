@@ -28,7 +28,8 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840], // Responsive breakpoints
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384], // Icon sizes
     minimumCacheTTL: 31536000, // 1 year cache for optimized images
-    dangerouslyAllowSVG: true,
+    // Do not run untrusted SVG bytes through the public image optimizer.
+    dangerouslyAllowSVG: false,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
@@ -102,18 +103,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Service worker must never be cached + wipe stale chunks
-        // when /sw.js is fetched. We only clear "cache" (HTTP cache +
-        // Cache API) here, NOT "storage" - clearing storage would
-        // wipe localStorage and force every user to re-login on each
-        // deploy. The kill-switch SW handles its own unregistration
-        // in its activate handler.
+        // Service worker must never be cached. Cache cleanup is scoped
+        // to ILENA-owned Cache API names by the worker itself.
         source: '/sw.js',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
           { key: 'Pragma', value: 'no-cache' },
           { key: 'Service-Worker-Allowed', value: '/' },
-          { key: 'Clear-Site-Data', value: '"cache"' },
         ],
       },
       {

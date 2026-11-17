@@ -63,9 +63,9 @@ export function ServiceWorkerProvider({ children }: { children: React.ReactNode 
     // serving them across deploys, which broke the app after we
     // changed lib/api.ts. We do NOT register any new SW; instead we:
     //   1. Look up every existing registration
-    //   2. Force a one-shot update (server now sends Clear-Site-Data
-    //      header on /sw.js so the browser wipes its cache when it
-    //      fetches the new file)
+    //   2. Force a one-shot update so the app-owned kill-switch can
+    //      remove ILENA caches and unregister without clearing unrelated
+    //      origin caches.
     //   3. Unregister the worker so it never controls the page again
     //
     // After all known visitors have been cleaned up we can delete this

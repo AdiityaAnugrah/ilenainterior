@@ -18,7 +18,7 @@ interface Product {
   id: number; sku: string; name: string; category: string;
   price: number; thumbnail: string | null; model_3d: string | null;
   stock: number; is_active: number; variant_count: number;
-  description?: string; dimensions?: any; tags?: string[];
+  description?: string; dimensions?: any; tags?: string[]; revision: string;
 }
 
 interface ConfirmationDialogProps {
@@ -326,6 +326,7 @@ export default function AdminProductsPage() {
           tags: product.tags?.join(',') || '',
           stock: product.stock,
           is_active: newStatus,
+          expected_revision: product.revision,
         })
       );
 
@@ -340,6 +341,7 @@ export default function AdminProductsPage() {
       ));
       const errorMsg = handleApiError(error, 'Toggle Status', product.id);
       toast.error(errorMsg);
+      if ((error as any)?.response?.status === 409 || (error as any)?.response?.status === 428) load();
       setDialogLoading(false);
     }
   };
@@ -424,6 +426,7 @@ export default function AdminProductsPage() {
           tags: product.tags?.join(',') || '',
           stock: newStock,
           is_active: product.is_active,
+          expected_revision: product.revision,
         })
       );
 
@@ -436,6 +439,7 @@ export default function AdminProductsPage() {
       ));
       const errorMsg = handleApiError(error, 'Stock Update', productId);
       toast.error(errorMsg);
+      if (error?.response?.status === 409 || error?.response?.status === 428) load();
     } finally {
       setProductLoading(productId, false);
     }
