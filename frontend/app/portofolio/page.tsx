@@ -1,153 +1,129 @@
-import Link from 'next/link';
-import { ArrowUpRight, ExternalLink, Image as ImageIcon, Play } from 'lucide-react';
+import Image from 'next/image';
 import Navbar from '@/components/ui/Navbar';
 
-const photoSlots = [
-  { label: 'Sudut ruang' },
-  { label: 'Detail furnitur' },
-  { label: 'Material dan tekstur' },
+const pages = [
+  {
+    number: 1,
+    title: 'ILENA Interior — sampul portofolio',
+    alt: 'Sampul portofolio ILENA Interior dengan logo di atas latar bilah kayu gelap dan informasi kontak.',
+    transcript: 'ILENA Interior. Email: ilenafurnitureofficial@gmail.com. Instagram: @ilenafurnitureofficial. Telepon: 0811-2800-8491.',
+  },
+  {
+    number: 2,
+    title: 'KosQ — Wall mirror',
+    alt: 'Portofolio produk KosQ Wall Mirror dengan foto cermin berbingkai kayu di sisi kanan dan deskripsi di kiri.',
+    transcript: 'Product portfolio — KosQ Wall mirror. Featuring a minimalist design with soft curved edges and a natural wood-tone frame, this mirror brings a sense of warmth and understated elegance to any interior. Its simple yet refined silhouette makes it a versatile addition to a variety of interior styles. Perfectly suited for bedrooms, living rooms, or entryways, it adds a decorative touch while enhancing the beauty of every corner of your home.',
+  },
+  {
+    number: 3,
+    title: 'KosQ — Aureo floating console',
+    alt: 'Halaman Aureo menampilkan satu foto console kayu pada dinding marmer di kiri, judul dan deskripsi di kanan.',
+    transcript: 'Aureo — Floating console. Elegance in Every Detail. The combination of beautiful marble textures and the warmth of natural wood creates a calming harmony within the space. Designed with clean lines and a minimalist approach, every detail reflects a thoughtful balance between functionality and aesthetics.',
+  },
+  {
+    number: 4,
+    title: 'KosQ — Floating wall shelf',
+    alt: 'Kolase rak dinding kayu melayang dengan judul besar dan deskripsi produk.',
+    transcript: 'Floating Wall Shelf — Designed to Complement. Bringing together geometric design and the warmth of natural wood textures, AUREO is crafted to add an aesthetic touch to every corner of the space. Its clean silhouette, complemented by distinctive construction details, creates a look that feels both modern and timeless. More than just a storage solution, this design serves as a decorative element that enhances the wall and adds character to the overall interior.',
+  },
+  {
+    number: 5,
+    title: 'KosQ — Bed Headboard & Side Table',
+    alt: 'Foto headboard dan meja samping tempat tidur dengan detail panel kayu vertikal.',
+    transcript: 'Bed Headboard & Side Table — ARVEN. Designed to bring warmth and character into the bedroom, this custom bedroom set combines a beautifully crafted wooden headboard with integrated side table storage. The vertical slat detailing creates a distinctive visual rhythm, complemented by soft upholstered padding for added comfort. A thoughtful combination of natural textures, functional elements, and refined craftsmanship creates a cohesive bedroom atmosphere that balances everyday practicality with timeless aesthetics.',
+  },
+  {
+    number: 6,
+    title: 'KosQ — Wardrobe & Study Desk',
+    alt: 'Kolase lemari pakaian dan meja belajar yang terintegrasi dengan rak terbuka dan laci.',
+    transcript: 'Wardrobe & Study Desk — ELVAR. Designed to maximize space while maintaining a refined aesthetic, this custom furniture combines wardrobe storage and a dedicated workspace in one seamless composition. The natural wood finish brings warmth to the interior, while open shelving and integrated drawers provide practical storage solutions. Every element is thoughtfully arranged to create a functional and cohesive space, balancing everyday convenience with clean, timeless design.',
+  },
+  {
+    number: 7,
+    title: 'Bu A** House — Marble Vanity Cabinet',
+    alt: 'Kabinet vanity kamar mandi bernuansa taupe dengan wastafel marmer, ditampilkan dalam komposisi editorial bernomor 06.',
+    transcript: 'Bu A** House — Marble Vanity Cabinet, 06. Crafted for Everyday Comfort. A thoughtful blend of natural marble and refined cabinetry, this custom vanity cabinet brings a sense of understated elegance to the bathroom. The warm taupe finish complements the distinctive marble patterns, creating a harmonious balance of textures and tones. Designed with integrated drawers for practical storage, every element is carefully considered to combine everyday functionality with a timeless aesthetic.',
+  },
+  {
+    number: 8,
+    title: 'Bu A** House — Marble Vanity details',
+    alt: 'Tiga foto detail vanity kamar mandi, termasuk kabinet, laci, dan wastafel marmer.',
+    transcript: 'Bu A** House — foto detail kabinet vanity, material marmer, wastafel, dan penyimpanan laci.',
+  },
+  {
+    number: 9,
+    title: 'Bu A** House — Concealed Bookshelf Door',
+    alt: 'Pintu tersembunyi yang menyatu dengan panel kayu dan berfungsi sebagai rak buku, diberi nomor 01.',
+    transcript: 'Bu A** House — Concealed Bookshelf Door, 01. Seamless Design, Hidden Purpose. Designed to blend seamlessly into its surroundings, this custom concealed door features a clean, minimalist exterior that maintains the visual harmony of the interior. Behind its understated white surface lies a functional bookshelf, transforming an ordinary doorway into a thoughtfully integrated storage feature.',
+  },
+  {
+    number: 10,
+    title: 'Bu A** House — Concealed Bookshelf Door details',
+    alt: 'Kolase detail pintu buku tersembunyi, rak internal, pencahayaan, serta foto penggunaan di ruang.',
+    transcript: 'Bu A** House — detail pintu bookshelf tersembunyi. Enhanced with built-in ambient lighting that can be switched on and off, the interior creates a warm and inviting display while adding another layer of functionality. A clever combination of discreet design, practical storage, and thoughtful detailing.',
+  },
+  {
+    number: 11,
+    title: 'Bu A** House — Custom Kitchen Set',
+    alt: 'Dua foto dapur custom dengan kabinet atas-bawah, penyimpanan terintegrasi, dan backsplash marmer.',
+    transcript: 'Bu A** House — Custom Kitchen Set. Crafted for Modern Living. A fully customized kitchen designed to bring functionality and refined aesthetics into one cohesive space. Featuring a combination of thoughtfully arranged upper and lower cabinetry, integrated storage, and elegant marble finishes, every element is tailored to complement the overall interior. A harmonious blend of craftsmanship, practicality, and timeless design.',
+  },
+  {
+    number: 12,
+    title: 'Bu A** House — Kitchen details',
+    alt: 'Kolase detail kabinet dapur, aksen kayu, marmer, rak terbuka, dan pencahayaan LED.',
+    transcript: 'Bu A** House — detail kitchen set. The warm wood accents and subtle cabinet tones create a balanced, sophisticated atmosphere, while integrated LED strip lighting adds depth and warmth to the space. Designed with adjustable lighting that can be switched on and off, every detail reflects a thoughtful approach to modern living.',
+  },
+  {
+    number: 13,
+    title: 'Bu A** House — Illuminated Wooden Staircase',
+    alt: 'Tangga kayu dengan pencahayaan LED di bawah tiap anak tangga, diberi nomor 07 dan nama Lumora.',
+    transcript: 'Bu A** House — Illuminated Wooden Staircase, 07. Where Light Meets Craftsmanship — LUMORA. Integrated LED strip lighting beneath each step adds depth and dimension, highlighting the natural wood texture and enhancing the overall ambience. With lighting that can be switched on and off, the staircase brings together thoughtful functionality and refined aesthetics in every detail.',
+  },
+  {
+    number: 14,
+    title: 'Bu A** House — Staircase gallery',
+    alt: 'Empat foto detail tangga kayu bercahaya dan panel dinding berpola geometris.',
+    transcript: 'Bu A** House — staircase gallery. A distinctive staircase design that combines the natural warmth of wood with striking architectural details. Featuring custom-crafted wooden steps and geometrically patterned wall panels, the design creates a bold visual statement while maintaining a warm and inviting atmosphere.',
+  },
 ];
-
-function MediaPlaceholder({ label, wide = false }: { label: string; wide?: boolean }) {
-  return (
-    <div
-      aria-label={`${label}; dokumentasi akan ditambahkan`}
-      role="img"
-      className={`relative flex ${wide ? 'aspect-[16/10]' : 'aspect-[4/3]'} items-center justify-center overflow-hidden bg-stone-100`}
-    >
-      <div aria-hidden="true" className="absolute inset-5 border border-stone-300 sm:inset-7" />
-      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1/3 bg-stone-200" />
-      <div aria-hidden="true" className="relative flex flex-col items-center gap-3 text-stone-700">
-        <ImageIcon size={28} strokeWidth={1.4} />
-        <span className="text-xs font-semibold sm:text-sm">{label}</span>
-      </div>
-      <span className="absolute bottom-8 right-8 text-xs font-medium text-stone-700">Materi menyusul</span>
-    </div>
-  );
-}
 
 export default function PortfolioPage() {
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900">
+    <div className="min-h-screen bg-white">
       <Navbar />
-
-      <main>
-        <header className="px-5 pb-12 pt-28 sm:px-8 sm:pb-16 sm:pt-36">
-          <div className="mx-auto max-w-7xl">
-            <p className="mb-4 flex items-center gap-2 text-sm font-semibold text-stone-700">
-              <span className="h-px w-8 bg-warm-500" />
-              ILENA INTERIOR
-            </p>
-            <div className="grid gap-6 md:grid-cols-[1fr_0.6fr] md:items-end">
-              <h1 className="max-w-3xl font-display text-4xl font-semibold leading-[1.08] tracking-tight text-stone-900 sm:text-6xl">
-                Portofolio ruang dan cerita di baliknya.
-              </h1>
-              <p className="max-w-lg text-base leading-7 text-stone-700 md:justify-self-end">
-                Lihat koleksi proyek, pilihan furnitur, dan detail yang membentuk setiap ruang. Foto, tautan proyek, serta video akan ditambahkan bertahap.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <section aria-labelledby="featured-title" className="px-5 pb-16 sm:px-8 sm:pb-20">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-5 flex items-end justify-between gap-4 border-b border-stone-300 pb-4">
-              <div>
-                <p className="text-sm font-semibold text-stone-700">Proyek pilihan</p>
-                <h2 id="featured-title" className="mt-1 font-display text-2xl font-semibold text-stone-900 sm:text-3xl">Ruang unggulan</h2>
-              </div>
-              <span className="hidden text-sm text-stone-600 sm:block">Format proyek siap diisi</span>
-            </div>
-
-            <article className="grid overflow-hidden border border-stone-200 bg-white lg:grid-cols-[1.2fr_0.8fr]">
-              <MediaPlaceholder label="Foto utama proyek" wide />
-              <div className="flex flex-col justify-center px-6 py-8 sm:px-9 sm:py-10">
-                <p className="text-sm font-semibold text-stone-700">Dokumentasi proyek</p>
-                <h3 className="mt-3 font-display text-2xl font-semibold text-stone-900 sm:text-3xl">Cerita ruang akan dimulai di sini.</h3>
-                <p className="mt-4 max-w-md text-sm leading-6 text-stone-700">
-                  Area ini disiapkan untuk foto utama, nama proyek, lokasi, dan cerita singkat setelah materi tersedia.
-                </p>
-                <div className="mt-7 flex items-center gap-2 border-t border-stone-200 pt-4 text-sm text-stone-700">
-                  <ExternalLink size={16} aria-hidden="true" />
-                  <span>Tautan studi proyek menyusul</span>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section aria-labelledby="gallery-title" className="bg-white px-5 py-16 sm:px-8 sm:py-20">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-8 max-w-2xl sm:mb-10">
-              <p className="mb-3 text-sm font-semibold text-stone-700">Galeri proyek</p>
-              <h2 id="gallery-title" className="font-display text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">
-                Detail yang membuat ruang terasa personal.
-              </h2>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {photoSlots.map((slot) => (
-                <article key={slot.label} className="border border-stone-200 bg-stone-50">
-                  <MediaPlaceholder label={slot.label} />
-                  <div className="flex items-center justify-between gap-3 px-4 py-4">
-                    <h3 className="text-sm font-semibold text-stone-900">{slot.label}</h3>
-                    <span className="text-xs text-stone-600">Foto menyusul</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section aria-labelledby="video-title" className="px-5 py-16 sm:px-8 sm:py-20">
-          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.7fr_1.3fr] lg:items-center lg:gap-14">
-            <div>
-              <p className="mb-3 text-sm font-semibold text-stone-700">Video tur ruang</p>
-              <h2 id="video-title" className="font-display text-3xl font-semibold leading-tight text-stone-900 sm:text-4xl">
-                Lihat ruang dari sudut yang berbeda.
-              </h2>
-              <p className="mt-4 max-w-md text-sm leading-6 text-stone-700 sm:text-base sm:leading-7">
-                Area ini siap untuk embed video tur proyek. Tautan video dapat ditambahkan saat sudah tersedia.
-              </p>
-            </div>
-            <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-stone-900 px-6 text-center text-white">
-              <div aria-hidden="true" className="absolute inset-5 border border-white/25 sm:inset-8" />
-              <div className="relative flex flex-col items-center">
-                <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-white/60 text-warm-400">
-                  <Play size={22} fill="currentColor" aria-hidden="true" />
-                </span>
-                <p className="font-semibold">Embed video proyek</p>
-                <p className="mt-1 text-sm text-stone-300">Video menyusul</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-5 pb-16 sm:px-8 sm:pb-20">
-          <div className="mx-auto flex max-w-7xl flex-col gap-6 border-t border-stone-300 pt-8 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-display text-2xl font-semibold text-stone-900">Punya rencana untuk ruangmu?</h2>
-              <p className="mt-2 text-sm text-stone-700">Mulai susun furnitur dan lihat rancanganmu dalam 3D.</p>
-            </div>
-            <Link
-              href="/planner"
-              className="inline-flex min-h-12 items-center justify-center gap-2 self-start rounded-lg bg-stone-800 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-800 sm:self-auto"
-            >
-              Buka room planner <ArrowUpRight size={17} aria-hidden="true" />
-            </Link>
-          </div>
-        </section>
+      <main className="bg-white pt-16">
+        <h1 className="sr-only">Portofolio ILENA Interior</h1>
+        <ol aria-label="Halaman portofolio ILENA Interior" className="m-0 list-none p-0">
+          {pages.map((page, index) => {
+            const src = `/portfolio/reference/page-${String(page.number).padStart(2, '0')}.webp`;
+            return (
+              <li key={page.number}>
+                <figure className="m-0">
+                  <a
+                    href={src}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Buka gambar resolusi penuh: ${page.title}`}
+                    className="block focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-stone-800"
+                  >
+                    <Image
+                      src={src}
+                      alt={page.alt}
+                      width={1191}
+                      height={839}
+                      sizes="100vw"
+                      priority={index === 0}
+                      className="h-auto w-full"
+                    />
+                  </a>
+                  <figcaption className="sr-only">{page.transcript}</figcaption>
+                </figure>
+              </li>
+            );
+          })}
+        </ol>
       </main>
-
-      <footer className="border-t border-stone-200 bg-white px-5 py-8 sm:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-          <Link href="/" className="font-display text-lg font-semibold tracking-wide text-stone-900">ILENA INTERIOR</Link>
-          <nav aria-label="Tautan footer" className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-stone-700">
-            <Link href="/catalog" className="hover:text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-800">Katalog</Link>
-            <Link href="/portofolio" className="hover:text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-800" aria-current="page">Portofolio</Link>
-          </nav>
-          <p className="text-xs text-stone-600">© 2026 ILENA INTERIOR</p>
-        </div>
-      </footer>
     </div>
   );
 }
