@@ -2,21 +2,20 @@
 .spread{position:relative;isolation:isolate;overflow:hidden;container-type:inline-size;width:min(100%,1280px);aspect-ratio:595.5/419.25;margin:0 auto 24px;background:#fff}
 .photo{position:absolute;display:block;overflow:hidden;margin:0;padding:0}
 .photo img{display:block}
-.photoLink{position:absolute;inset:0;display:block;color:inherit}
+.photoLink{position:absolute;inset:0;display:block;color:inherit;cursor:zoom-in}
 .photoLink:focus-visible{z-index:2;outline:3px solid #f3f1ec;outline-offset:-6px}
-.photoLink:focus-visible .photoAction{opacity:1;transform:translateY(0)}
-.photoAction{position:absolute;right:12px;bottom:12px;padding:9px 12px;background:rgba(28,25,23,.9);color:#fff;font:600 12px/1 PortfolioAileron,Arial,sans-serif;opacity:0;transform:translateY(4px);transition:opacity .2s ease,transform .2s ease}
 .ctaWrap{width:min(100%,1280px);margin:0 auto;padding:20px 24px 76px}
 .cta{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:36px;padding:clamp(28px,5vw,56px);border-left:4px solid #ec1744;background:#2c1e17;color:#fff}
 .ctaCopy{max-width:660px}
 .ctaCopy h2{margin:0;font-family:PortfolioMontserrat,Arial,sans-serif;font-size:clamp(25px,3.5vw,42px);font-weight:700;line-height:1.08;letter-spacing:-.035em}
 .ctaCopy p{max-width:46ch;margin:16px 0 0;color:#e5ddd7;font:400 16px/1.55 PortfolioAileron,Arial,sans-serif}
 .ctaActions{display:flex;flex-wrap:wrap;gap:10px}
-.primaryAction,.secondaryAction{display:inline-flex;min-height:48px;align-items:center;justify-content:center;gap:9px;padding:0 17px;font:600 14px/1 PortfolioAileron,Arial,sans-serif;text-decoration:none;transition:background-color .18s ease,color .18s ease,border-color .18s ease,transform .18s ease}
+.primaryAction,.secondaryAction{display:inline-flex;min-height:48px;align-items:center;justify-content:center;gap:9px;padding:0 17px;font:600 14px/1 PortfolioAileron,Arial,sans-serif;text-decoration:none;transition:background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
 .primaryAction{background:#f3f1ec;color:#241a15}
 .secondaryAction{border:1px solid rgba(255,255,255,.58);color:#fff}
-.primaryAction:hover{background:#fff;transform:translateY(-2px)}
-.secondaryAction:hover{border-color:#fff;background:rgba(255,255,255,.1);transform:translateY(-2px)}
+.primaryAction:hover{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.16)}
+.secondaryAction:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+.primaryAction:active,.secondaryAction:active{box-shadow:none}
 .primaryAction:focus-visible,.secondaryAction:focus-visible{outline:3px solid #ff486b;outline-offset:3px}
 .copy{position:absolute;z-index:20;margin:0;padding:0;white-space:pre-line;line-height:1.2;font-family:Arial,Helvetica,sans-serif;color:#111;overflow:visible}
 .bold{font-weight:800;line-height:.98;letter-spacing:-.035em}
@@ -50,15 +49,8 @@
  .primaryAction,.secondaryAction{width:100%;min-height:48px}
 }
 
-@media(hover:hover){
- .photoLink:hover .photoAction{opacity:1;transform:translateY(0)}
-}
-@media(hover:hover) and (prefers-reduced-motion:no-preference){.photoLink:hover img{transform:scale(1.035)}}
-@media(hover:none){.photoLink:active{transform:scale(.99)}}
 @media(prefers-reduced-motion:reduce){
- .photoAction,.primaryAction,.secondaryAction{transition:none}
- .photoLink:hover img{transform:none}
- .primaryAction:hover,.secondaryAction:hover,.photoLink:active{transform:none}
+ .primaryAction,.secondaryAction{transition:none}
 }
 
 

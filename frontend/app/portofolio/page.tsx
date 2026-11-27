@@ -29,7 +29,6 @@ export default function PortfolioPage(){
       {page.p.map((p,j)=><figure key={p.src} className={styles.photo} style={{left:pos(p.x,595.5),top:pos(p.y,419.25),width:pos(p.w,595.5),height:pos(p.h,419.25),aspectRatio:`${p.w}/${p.h}`,zIndex:p.z??j+1}}>
         <a className={styles.photoLink} href={`/portfolio/photos/${p.src}`} target="_blank" rel="noreferrer" aria-label={`Perbesar foto: ${p.alt}`}>
           <Image src={`/portfolio/photos/${p.src}`} alt={p.alt} fill sizes="(max-width: 600px) 100vw, 1280px" priority={i<2} style={{position:'absolute',left:pos((p.fx??p.x)-p.x,p.w),top:pos((p.fy??p.y)-p.y,p.h),width:pos(p.fw??p.w,p.w),height:pos(p.fh??p.h,p.h),right:'auto',bottom:'auto',maxWidth:'none',maxHeight:'none',objectFit:p.src==='p01-01.jpeg'?'cover':'fill'}}/>
-          <span className={styles.photoAction} aria-hidden="true">Lihat foto</span>
         </a>
       </figure>)}
       {page.t.map((t,j)=><p key={j} className={`${styles.copy} ${t.kind?styles[t.kind]:styles.body}`} style={{left:pos(t.x,595.5),top:pos(t.y,419.25),width:pos(t.w,595.5),height:pos(t.h,419.25),fontSize:`${100*t.size/595.5}cqw`,'--mobile-size':`${Math.max(12,t.size*.64)}px`} as CSSProperties}>{t.text}</p>)}
