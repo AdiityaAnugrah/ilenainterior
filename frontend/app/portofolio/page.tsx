@@ -1,5 +1,7 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import type { CSSProperties } from 'react';
+import { ArrowUpRight, MessageCircle } from 'lucide-react';
 import Navbar from '@/components/ui/Navbar';
 import styles from './portfolio.module.css';
 type P={src:string;alt:string;x:number;y:number;w:number;h:number;z?:number;fx?:number;fy?:number;fw?:number;fh?:number};type T={text:string;x:number;y:number;w:number;h:number;size:number;kind?:string};type S={p:P[];t:T[]};
@@ -21,4 +23,28 @@ const pages:S[]=[
 {p:[{src:'p14-01.png',alt:'Detail lampu sisi tangga kayu',x:14,y:164,w:136,h:159,fx:-45,fy:164,fw:253,fh:159},{src:'p14-02.png',alt:'Panel kayu tangga dari bawah',x:157,y:42,w:137,h:281,fx:146,fy:42,fw:159,fh:281},{src:'p14-03.png',alt:'Anak tangga kayu dengan lampu',x:301,y:42,w:136,h:281,fx:290,fy:42,fw:159,fh:281},{src:'p14-04.png',alt:'Tangga kayu dengan pencahayaan',x:445,y:42,w:136,h:281,fx:436,fy:42,fw:155,fh:281}],t:[{text:'Bu A**\nHouse',x:45,y:69,w:85,h:41,size:16.6,kind:'brand'},{text:'A distinctive staircase design that combines the natural warmth of wood with striking architectural details. Featuring custom-crafted wooden steps and geometrically\npatterned wall panels, the design creates a bold visual statement while maintaining a warm and inviting atmosphere.',x:14,y:336,w:557,h:22,size:7.8,kind:'tech'}]},
 ];
 const pos=(v:number,d:number)=>`${100*v/d}%`;
-export default function PortfolioPage(){return <><Navbar/><main className={styles.portfolio} aria-label="Portofolio ILENA Interior">{pages.map((page,i)=><article className={styles.spread} key={i} data-page={i+1} aria-label={`Halaman ${i+1} dari 14`}>{page.p.map((p,j)=><figure key={p.src} className={styles.photo} style={{left:pos(p.x,595.5),top:pos(p.y,419.25),width:pos(p.w,595.5),height:pos(p.h,419.25),aspectRatio:`${p.w}/${p.h}`,zIndex:p.z??j+1}}><Image src={`/portfolio/photos/${p.src}`} alt={p.alt} fill sizes="(max-width: 600px) 100vw, 1280px" priority={i<2} style={{position:'absolute',left:pos((p.fx??p.x)-p.x,p.w),top:pos((p.fy??p.y)-p.y,p.h),width:pos(p.fw??p.w,p.w),height:pos(p.fh??p.h,p.h),right:'auto',bottom:'auto',maxWidth:'none',maxHeight:'none',objectFit:p.src==='p01-01.jpeg'?'cover':'fill'}}/></figure>)}{page.t.map((t,j)=><p key={j} className={`${styles.copy} ${t.kind?styles[t.kind]:styles.body}`} style={{left:pos(t.x,595.5),top:pos(t.y,419.25),width:pos(t.w,595.5),height:pos(t.h,419.25),fontSize:`${100*t.size/595.5}cqw`,'--mobile-size':`${Math.max(12,t.size*.64)}px`} as CSSProperties}>{t.text}</p>)}</article>)}</main></>}
+export default function PortfolioPage(){
+  return <><Navbar/><main className={styles.portfolio} aria-label="Portofolio ILENA Interior">
+    {pages.map((page,i)=><article className={styles.spread} key={i} data-page={i+1} aria-label={`Halaman ${i+1} dari 14`}>
+      {page.p.map((p,j)=><figure key={p.src} className={styles.photo} style={{left:pos(p.x,595.5),top:pos(p.y,419.25),width:pos(p.w,595.5),height:pos(p.h,419.25),aspectRatio:`${p.w}/${p.h}`,zIndex:p.z??j+1}}>
+        <a className={styles.photoLink} href={`/portfolio/photos/${p.src}`} target="_blank" rel="noreferrer" aria-label={`Perbesar foto: ${p.alt}`}>
+          <Image src={`/portfolio/photos/${p.src}`} alt={p.alt} fill sizes="(max-width: 600px) 100vw, 1280px" priority={i<2} style={{position:'absolute',left:pos((p.fx??p.x)-p.x,p.w),top:pos((p.fy??p.y)-p.y,p.h),width:pos(p.fw??p.w,p.w),height:pos(p.fh??p.h,p.h),right:'auto',bottom:'auto',maxWidth:'none',maxHeight:'none',objectFit:p.src==='p01-01.jpeg'?'cover':'fill'}}/>
+          <span className={styles.photoAction} aria-hidden="true">Lihat foto</span>
+        </a>
+      </figure>)}
+      {page.t.map((t,j)=><p key={j} className={`${styles.copy} ${t.kind?styles[t.kind]:styles.body}`} style={{left:pos(t.x,595.5),top:pos(t.y,419.25),width:pos(t.w,595.5),height:pos(t.h,419.25),fontSize:`${100*t.size/595.5}cqw`,'--mobile-size':`${Math.max(12,t.size*.64)}px`} as CSSProperties}>{t.text}</p>)}
+    </article>)}
+    <section className={styles.ctaWrap} aria-labelledby="portfolio-cta-title">
+      <div className={styles.cta}>
+        <div className={styles.ctaCopy}>
+          <h2 id="portfolio-cta-title">Sudah menemukan inspirasi untuk rumahmu?</h2>
+          <p>Wujudkan idemu di planner, atau diskusikan langsung dengan tim ILENA.</p>
+        </div>
+        <div className={styles.ctaActions}>
+          <Link className={styles.primaryAction} href="/planner">Mulai desain <ArrowUpRight size={17} aria-hidden="true"/></Link>
+          <a className={styles.secondaryAction} href="https://wa.me/6281128008491" target="_blank" rel="noreferrer"><MessageCircle size={17} aria-hidden="true"/> Konsultasi WhatsApp</a>
+        </div>
+      </div>
+    </section>
+  </main></>;
+}
