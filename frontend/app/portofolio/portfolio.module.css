@@ -1,4 +1,4 @@
-.portfolio{width:100%;padding:0 0 36px;background:#f3f1ec;color:#171614}
+.portfolio{width:100%;padding:64px 0 36px;background:#f3f1ec;color:#171614}
 .spread{position:relative;isolation:isolate;overflow:hidden;container-type:inline-size;width:min(100%,1280px);aspect-ratio:595.5/419.25;margin:0 auto 24px;background:#fff}
 .photo{position:absolute;display:block;overflow:hidden;margin:0;padding:0}
 .photo img{display:block}
